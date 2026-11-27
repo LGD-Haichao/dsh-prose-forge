@@ -243,6 +243,7 @@ const checks = [
   ['命令行参数不误伤', (auditTypography('用 --store-dir 参数。').counts['dash-double-hyphen'] ?? 0) === 0],
   ['中文句里英文开头不误报', (auditTypography('Redis，是一个内存数据库。').counts['en-punct-cjk'] ?? 0) === 0],
   ['整句英文用中文标点仍报', (auditTypography('restart the service。').counts['en-punct-cjk'] ?? 0) === 1],
+  ['判断英文语境不跨句', (auditTypography('中间一句。restart the service。').counts['en-punct-cjk'] ?? 0) === 1],
   ['落单的英文引号被抓', (auditTypography('他说"走吧。').counts['ascii-quote-cn'] ?? 0) === 1],
   ['成对英文引号只报一次', (auditTypography('他说"走吧"。').counts['ascii-quote-cn'] ?? 0) === 1],
   ['英文句子里的引号不动', auditTypography('the "spec" file is here').total === 0],

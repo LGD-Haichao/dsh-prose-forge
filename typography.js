@@ -416,7 +416,19 @@ export function auditTypography(text, options = {}) {
           Math.min(text.length, match.index + match[0].length + 15),
         )
         const inCjkContext = !rule.cjkContext || cjkRe.test(nearby)
-        const before = text.slice(Math.max(0, match.index - (rule.asciiBefore ?? 0)), match.index)
+        // 判断「这句是不是英文」时，只看当前句——窗口不能跨过上一个句末标点。
+        // 否则一段中文里夹的最后一句英文，会被前面的中文传染，判成中文语境漏掉。
+        const clauseStart =
+          Math.max(
+            text.lastIndexOf('。', match.index - 1),
+            text.lastIndexOf('！', match.index - 1),
+            text.lastIndexOf('？', match.index - 1),
+            text.lastIndexOf('\n', match.index - 1),
+          ) + 1
+        const before = text.slice(
+          Math.max(clauseStart, match.index - (rule.asciiBefore ?? 0)),
+          match.index,
+        )
         // 前面有汉字，或者有中文的开括号、开引号，都算中文语境。
         // 只认汉字会误伤「（MIT，Copyright 2026）」这种括号里起头的英文词；
         // 但句末标点不算信号，否则同一句里第二个错标点会被第一个压掉。
