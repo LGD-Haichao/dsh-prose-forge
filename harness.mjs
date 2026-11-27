@@ -129,6 +129,24 @@ check('审计统计标题数', audit.headingCount === 3, String(audit.headingCou
 const longPara = auditStructure(`# 标题\n\n${'这是一句很长的正文。'.repeat(60)}`)
 check('审计发现超长段', longPara.findings.some(f => f.kind === 'long-paragraph'), '')
 
+// ---- 排版与自定义规则
+const typoResult = await checkTool.execute({ text: '第一，第二,第三。等一下...再说。' })
+check(
+  '返回排版体检',
+  typeof typoResult.typography?.total === 'number' && typoResult.typography.total > 0,
+  String(typoResult.typography?.total),
+)
+const typoRender = checkTool.output.render({}, typoResult)
+check('排版问题渲染进报告', /排版：/.test(typoRender[0].text), '')
+
+const customTool = proseTools({ customRules: [{ pattern: 'ABC', group: '自定义', advice: '别用 ABC' }] })[0]
+const customResult = await customTool.execute({ text: '这里有 ABC 出现。' })
+check('自定义规则生效', (customResult.groups['自定义'] ?? 0) === 1, JSON.stringify(customResult.groups))
+
+const badTool = proseTools({ customRules: [{ pattern: '([' }] })[0]
+const badResult = await badTool.execute({ text: '测试。' })
+check('坏正则不崩并报错', badResult.ok === true && badResult.invalidRules?.length === 1, '')
+
 // ---- 技能
 check('注册了一个 skill provider', registered.providers.length === 1, `实际 ${registered.providers.length}`)
 const skillProvider = registered.providers[0] ?? {}

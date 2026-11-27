@@ -33,6 +33,7 @@ const DEFAULTS = {
   registerTools: true,
   registerSkills: true,
   extraBanned: [],
+  customRules: [],
 }
 
 const SKILLS_DIR = fileURLToPath(new URL('./skills/', import.meta.url))
@@ -125,6 +126,20 @@ function renderScan(_args, value) {
       `数字 ${s.numberDensity}/千字 · 代码 ${s.codeRatio}%`,
   )
 
+  if (value.typography && value.typography.total > 0) {
+    lines.push('', `排版：${value.typography.total} 处，其中 ${value.typography.fixable} 处可机械修正`)
+    for (const item of value.typography.findings) {
+      const fix = item.fix === undefined ? '' : ` → ${JSON.stringify(item.fix)}`
+      lines.push(`- L${item.line}:${item.col} [${item.group}] ${JSON.stringify(item.match)}${fix}`)
+    }
+    if (value.typography.truncated) lines.push('- …（已截断）')
+  }
+
+  if (Array.isArray(value.invalidRules) && value.invalidRules.length > 0) {
+    lines.push('', '自定义规则有错误：')
+    for (const message of value.invalidRules) lines.push(`- ${message}`)
+  }
+
   if (value.audit && value.audit.findings.length > 0) {
     lines.push('', `结构审计（${value.audit.headingCount} 个标题）：`)
     for (const finding of value.audit.findings) lines.push(`- L${finding.line} [${finding.kind}] ${finding.detail}`)
@@ -155,13 +170,14 @@ function renderRules(_args, value) {
 }
 
 /** 扫描工具：给 text 扫文本，给 path 扫文件（全文不进上下文）。 */
-function scanTool() {
+function scanTool(config = {}) {
   return makeTool({
     name: 'prose_check',
     description:
       '扫描 AI 腔并自检文风。给 path 直接读盘扫文件，全文不进上下文；给 text 扫传入的文本。' +
-      '返回命中明细与结构指标；mode=doc 加做结构审计：标题层级跳跃、空节、超长段、小表格。' +
-      '只报线索不改写，命中不等于要改。Triggers: 去掉AI味, 检查文风, AI腔, 审稿, 检查这个文件, 交付前自检.',
+      '返回命中明细与结构指标，附中文排版体检（标点、空格、引号）；mode=doc 加做结构审计：' +
+      '标题层级跳跃、空节、超长段、小表格。只报线索不改写，命中不等于要改。' +
+      'Triggers: 去掉AI味, 检查文风, AI腔, 审稿, 检查这个文件, 交付前自检, 排版检查.',
     parameters: {
       type: 'object',
       properties: {
@@ -182,7 +198,7 @@ function scanTool() {
         return { ok: false, error: '要么给 text（文本），要么给 path（文件路径）。' }
       }
       if (!filePath) {
-        return analyze(args.text, { mode, limit })
+        return analyze(args.text, { mode, limit, customRules: config.customRules })
       }
 
       let info
@@ -202,7 +218,7 @@ function scanTool() {
       }
       if (raw.includes('\u0000')) return { ok: false, error: `看起来是二进制文件，跳过：${filePath}` }
 
-      const report = analyze(raw, { mode, limit })
+      const report = analyze(raw, { mode, limit, customRules: config.customRules })
       if (report.ok === false) return report
 
       return { ...report, path: filePath, bytes: info.size, audit: auditStructure(raw) }
@@ -238,8 +254,8 @@ function rulesTool() {
 }
 
 /** 本插件贡献的全部工具。 */
-export function proseTools() {
-  return [scanTool(), rulesTool()]
+export function proseTools(config = {}) {
+  return [scanTool(config), rulesTool()]
 }
 
 // ---------------------------------------------------------------- 技能
@@ -338,7 +354,7 @@ export function apply(ctx, config = {}) {
 
   if (settings.registerTools !== false) {
     ctx.effect(() => {
-      const disposers = proseTools().map(tool => ctx.tools.register(tool))
+      const disposers = proseTools(settings).map(tool => ctx.tools.register(tool))
       return () => {
         for (const dispose of disposers) {
           if (typeof dispose === 'function') dispose()

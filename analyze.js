@@ -11,6 +11,8 @@
  * 命中是线索，不是判决书。调用方应当在报告里保留这个状语。
  */
 
+import { auditTypography } from './typography.js'
+
 /** 严重度权重：3 重 / 2 中 / 1 轻。 */
 const WEIGHT = { 3: 3, 2: 2, 1: 1 }
 
@@ -406,6 +408,40 @@ function structuralNotes(stats, mode) {
 }
 
 /**
+ * 把配置里的自定义规则编译成内部规则。
+ *
+ * 正则编译失败不能把整次扫描带崩——跳过这一条，记下来，继续扫。
+ *
+ * @param {unknown} customRules - 配置传入的规则数组
+ * @returns {{ rules: object[], invalid: string[] }} 可用规则与错误说明
+ */
+function compileCustomRules(customRules) {
+  const rules = []
+  const invalid = []
+  if (!Array.isArray(customRules)) return { rules, invalid }
+
+  customRules.forEach((raw, index) => {
+    if (!raw || typeof raw.pattern !== 'string' || raw.pattern === '') {
+      invalid.push(`第 ${index + 1} 条缺 pattern`)
+      return
+    }
+    try {
+      rules.push({
+        id: String(raw.id ?? `custom-${index + 1}`),
+        group: String(raw.group ?? '自定义'),
+        severity: [1, 2, 3].includes(raw.severity) ? raw.severity : 2,
+        re: new RegExp(raw.pattern, 'g'),
+        advice: String(raw.advice ?? '命中自定义规则。'),
+      })
+    } catch (error) {
+      invalid.push(`第 ${index + 1} 条正则无效：${error instanceof Error ? error.message : String(error)}`)
+    }
+  })
+
+  return { rules, invalid }
+}
+
+/**
  * 扫描一段文本。
  *
  * @param {string} text - 待扫描文本
@@ -433,8 +469,10 @@ export function analyze(text, options = {}) {
 
     const starts = buildLineStarts(text)
     const hits = []
+    const custom = compileCustomRules(options.customRules)
+    const allRules = custom.rules.length > 0 ? [...RULES, ...custom.rules] : RULES
 
-    for (const rule of RULES) {
+    for (const rule of allRules) {
       if (rule.modes && !rule.modes.includes(mode)) continue
       const re = new RegExp(rule.re.source, rule.re.flags)
       let match = re.exec(masked)
@@ -487,6 +525,8 @@ export function analyze(text, options = {}) {
       hits: kept.map(({ index: _index, rule: _rule, ...rest }) => rest),
       stats,
       notes: structuralNotes(stats, mode),
+      typography: auditTypography(masked),
+      ...(custom.invalid.length > 0 ? { invalidRules: custom.invalid } : {}),
     }
   } catch (error) {
     return { ok: false, error: `扫描失败：${error instanceof Error ? error.message : String(error)}` }

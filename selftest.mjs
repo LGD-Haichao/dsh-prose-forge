@@ -99,6 +99,32 @@ const checks = [
     '代码块被掩掉且下标不偏移',
     analyze('正文。\n\n```js\nconst a = 1\n```\n\n综上所述。').hits.some(h => h.line === 7 && h.group === '套话收尾'),
   ],
+  ['排版：中文里的半角逗号被抓住', (analyze('第一，第二,第三。').typography.counts['halfwidth-punct'] ?? 0) > 0],
+  [
+    '排版：半角标点的修法保留汉字',
+    analyze('第一,第二。').typography.findings.some(item => item.kind === 'halfwidth-punct' && item.fix === '一，'),
+  ],
+  [
+    '排版：半角句号的修法保留汉字',
+    analyze('好.然后。').typography.findings.some(item => item.kind === 'halfwidth-period' && item.fix === '好。'),
+  ],
+  ['排版：省略号写成三个点被抓住', (analyze('等一下...再说。').typography.counts.ellipsis ?? 0) > 0],
+  ['排版：行尾空格被抓住', (analyze('这行有空格   \n下一行。').typography.counts['trailing-space'] ?? 0) > 0],
+  [
+    '排版：代码块里的半角标点不算',
+    (analyze('正文。\n\n```js\nfoo(a,b)\n```\n').typography.counts['halfwidth-punct'] ?? 0) === 0,
+  ],
+  [
+    '自定义规则能命中',
+    (analyze('这里有个 ZZ 标记。', { customRules: [{ pattern: 'ZZ', group: '测试' }] }).groups['测试'] ?? 0) === 1,
+  ],
+  [
+    '无效正则不崩且被记录',
+    (() => {
+      const report = analyze('测试。', { customRules: [{ pattern: '([' }] })
+      return report.ok === true && report.invalidRules?.length === 1
+    })(),
+  ],
 ]
 
 let failed = 0
