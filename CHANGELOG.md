@@ -1,5 +1,11 @@
 # 变更记录
 
+## 0.6.4
+
+- **安装与更新链路实测通过。** 干净目录 `pnpm add github:…` 装好 20 个文件；装好的那份 81 + 89 + 17 全过；`pnpm update` 从 0.6.2 升到 0.6.3；新建 profile 后 `dsh plugin add github:…` 会自动写进 `bundles`，`--dump-config` 能看到挂载行。
+- **README 补验证记录表。** 每次发版前跑一遍这几条，结果贴表里。
+- **清理了一个误解。** 之前以为 `dsh plugin add` 只写 dependencies、要手动补 bundles，实测它两个都写。桌面 profile 那次丢 bundles 是被插件页关掉的，不是 CLI 的问题。
+
 ## 0.6.3
 
 - **README 补「更新」和「跨机器」两节。** 写清怎么拉最新版、装完怎么自检、换机器要注意什么。

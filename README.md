@@ -155,6 +155,18 @@ node node_modules/dsh-prose-forge/selftest.mjs
 
 三个脚本都不用装依赖，直接跑：`selftest` 查扫描器，`harness` 查插件挂载形状，`audit` 查规则覆盖和文档一致性。
 
+## 验证记录
+
+这些都是实际跑出来的，不是照着设想写的。
+
+| 做了什么 | 结果 |
+| --- | --- |
+| 干净目录 `pnpm add github:LGD-Haichao/dsh-prose-forge` | 8.6 秒装完，20 个文件齐全，零依赖 |
+| 装好的那份跑三套测试 | 81 + 89 + 17 全过 |
+| `pnpm update dsh-prose-forge` | 0.6.2 → 0.6.3，拉的是仓库 HEAD |
+| 新建 profile 后 `dsh plugin --profile pf-test add github:…` | 自动写进 `dsh.profile.bundles`，`--dump-config` 能看到 `# == dsh-prose-forge` |
+| UTF-16BE 往返、目录当文件、文件不存在、空文件、未知 kinds | 行为都正确，没有意外 |
+
 ## 跨机器
 
 - 零运行时依赖，`import` 只有 `node:fs`、`node:path`、`node:url` 和本地文件，装完不需要再装任何东西。
