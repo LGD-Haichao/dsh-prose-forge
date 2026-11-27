@@ -352,14 +352,23 @@ export function maskText(text) {
  */
 export function auditStructure(text) {
   const findings = []
-  const lines = text.split(/\r?\n/)
+  const rawLines = text.split(/\r?\n/)
+  // 结构判断在掩码文本上做：代码块里的 #、|、--- 不是标题、表格、分隔线。
+  // 标题文字仍然从原文取，否则报告里会带出掩码字符。
+  const lines = maskText(text).masked.split(/\r?\n/)
 
   const headings = []
   for (let idx = 0; idx < lines.length; idx += 1) {
     const line = lines[idx]
+    const title = () => rawLines[idx].trim()
     const markdown = /^(#{1,6})[ \t]+(\S.*)$/.exec(line)
     if (markdown) {
-      headings.push({ level: markdown[1].length, title: markdown[2].trim(), line: idx + 1, index: idx })
+      headings.push({
+        level: markdown[1].length,
+        title: title().replace(/^#{1,6}[ \t]+/, ''),
+        line: idx + 1,
+        index: idx,
+      })
       continue
     }
     // setext 标题：文字下面跟一行 === 或 ---。等号是一级，减号是二级。
@@ -367,22 +376,32 @@ export function auditStructure(text) {
     const next = lines[idx + 1] ?? ''
     const isBodyLine = line.trim() !== '' && !/^\s{0,3}(?:[-*+]|\d+[.)]|\||#)/.test(line)
     if (isBodyLine && /^=+[ \t]*$/.test(next)) {
-      headings.push({ level: 1, title: line.trim(), line: idx + 1, index: idx })
+      headings.push({ level: 1, title: title(), line: idx + 1, index: idx })
       continue
     }
     if (isBodyLine && /^-{2,}[ \t]*$/.test(next)) {
-      headings.push({ level: 2, title: line.trim(), line: idx + 1, index: idx })
+      headings.push({ level: 2, title: title(), line: idx + 1, index: idx })
       continue
     }
     // 中文编号标题：一、二、按二级算，（）里的编号按三级算。纯文本报告全靠这个撑结构。
     const numbered = /^[一二三四五六七八九十百]+[、.．][ \t]*(\S.*)$/.exec(line)
     if (numbered) {
-      headings.push({ level: 2, title: numbered[1].trim(), line: idx + 1, index: idx })
+      headings.push({
+        level: 2,
+        title: title().replace(/^[一二三四五六七八九十百]+[、.．][ \t]*/, ''),
+        line: idx + 1,
+        index: idx,
+      })
       continue
     }
     const nested = /^[（(][一二三四五六七八九十百]+[）)][ \t]*(\S.*)$/.exec(line)
     if (nested) {
-      headings.push({ level: 3, title: nested[1].trim(), line: idx + 1, index: idx })
+      headings.push({
+        level: 3,
+        title: title().replace(/^[（(][一二三四五六七八九十百]+[）)][ \t]*/, ''),
+        line: idx + 1,
+        index: idx,
+      })
     }
   }
 
@@ -400,11 +419,13 @@ export function auditStructure(text) {
   }
 
   // 空节：标题下面没有正文。容器节不算——下一级标题比它深，说明正文在子节里。
+  // 这里必须看原文：代码块被掩成 NBSP 之后 trim() 会当成空行，
+  // 一个只放代码块的节就会被误判成空节。
   for (let i = 0; i < headings.length; i += 1) {
     if (i + 1 < headings.length && headings[i + 1].level > headings[i].level) continue
     const start = headings[i].index + 1
-    const end = i + 1 < headings.length ? headings[i + 1].index : lines.length
-    const body = lines.slice(start, end).filter(line => line.trim() !== '' && !/^\s*(?:```|~~~)/.test(line))
+    const end = i + 1 < headings.length ? headings[i + 1].index : rawLines.length
+    const body = rawLines.slice(start, end).filter(line => line.trim() !== '')
     if (body.length === 0) {
       findings.push({ kind: 'empty-section', line: headings[i].line, detail: `「${headings[i].title}」下面没有正文` })
     }
