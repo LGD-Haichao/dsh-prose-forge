@@ -321,6 +321,18 @@ check('HTML 代码标签内容不改', (await fixToolRef.execute({ text: '<code>
 check('HTML 正文照改', (await fixToolRef.execute({ text: '<div>共 3 个</div>' })).text === '<div>共3个</div>', '')
 check('硬换行不被删', (await fixToolRef.execute({ text: '行一  \n行二 共 3 个。' })).text === '行一  \n行二 共3个。', '')
 check(
+  'HTML 注释内容不改',
+  (await fixToolRef.execute({ text: '<!-- 共 3 个 -->\n正文 共 3 个。', kinds: ['cjk-latin-space'] })).text ===
+    '<!-- 共 3 个 -->\n正文 共3个。',
+  '',
+)
+check(
+  '多行 HTML 注释不改',
+  (await fixToolRef.execute({ text: '<!--\n第一行 共 3 个\n-->\n正文 共 3 个。', kinds: ['cjk-latin-space'] })).text ===
+    '<!--\n第一行 共 3 个\n-->\n正文 共3个。',
+  '',
+)
+check(
   '链接里的中文路径不被改成全角',
   (await fixToolRef.execute({ text: '见 [说明](常见问题.md) 这里。', kinds: ['halfwidth-paren-cn'] })).text ===
     '见 [说明](常见问题.md) 这里。',

@@ -278,6 +278,12 @@ export function maskText(text) {
     paint(match.index, match.index + match[0].length, false)
   }
 
+  // HTML 注释：不渲染，是写给作者自己看的，有时是注释掉的旧内容。
+  // 改它既没意义也可能破坏注释里的示例，整段跳过。不算代码，免得抬高代码占比。
+  for (const match of text.matchAll(/<!--[\s\S]*?-->/g)) {
+    paint(match.index, match.index + match[0].length, false)
+  }
+
   // HTML 里放代码的标签：<code>、<pre>、<kbd>、<samp>。连内容一起掩，
   // 里面的空格是内容，不是排版错误。
   for (const match of text.matchAll(/<(code|pre|kbd|samp)\b[^>]*>[\s\S]*?<\/\1\s*>/gi)) {
