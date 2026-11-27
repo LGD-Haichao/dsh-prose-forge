@@ -13,12 +13,13 @@
  * JSON Schema、给execute包一层参数校验，两件都在下面自己做。
  */
 
-import { readFile, readdir, stat } from 'node:fs/promises'
+import { readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { STYLE_PROMPT, STYLE_SECTION_NAME, STYLE_SECTION_ORDER } from './prompt.js'
 import { analyze, auditStructure } from './analyze.js'
+import { fixTypography } from './typography.js'
 import { PARTS, lookup } from './rules.js'
 
 /** Cordis插件名，稳定标识。 */
@@ -34,7 +35,8 @@ const DEFAULTS = {
   registerSkills: true,
   extraBanned: [],
   customRules: [],
-  typographySkip: [],
+  // 中英空格这条约定没定死，默认不查；要清理时用 prose_fix。
+  typographySkip: ['cjk-latin-space'],
 }
 
 const SKILLS_DIR = fileURLToPath(new URL('./skills/', import.meta.url))
@@ -223,7 +225,7 @@ function scanTool(config = {}) {
         return { ok: false, error: '要么给text（文本），要么给path（文件路径）。' }
       }
       if (!filePath) {
-        return analyze(args.text, { mode, limit, customRules: config.customRules, typographySkip: [...(config.typographySkip ?? []), ...(Array.isArray(args.skip) ? args.skip : [])] })
+        return analyze(args.text, { mode, limit, customRules: config.customRules, typographySkip: (Array.isArray(args.skip) ? args.skip : (config.typographySkip ?? [])) })
       }
 
       let info
@@ -244,7 +246,7 @@ function scanTool(config = {}) {
       const raw = decodeText(buffer)
       if (raw.includes('\u0000')) return { ok: false, error: `看起来是二进制文件，跳过：${filePath}` }
 
-      const report = analyze(raw, { mode, limit, customRules: config.customRules, typographySkip: [...(config.typographySkip ?? []), ...(Array.isArray(args.skip) ? args.skip : [])] })
+      const report = analyze(raw, { mode, limit, customRules: config.customRules, typographySkip: (Array.isArray(args.skip) ? args.skip : (config.typographySkip ?? [])) })
       if (report.ok === false) return report
 
       return { ...report, path: filePath, bytes: info.size, audit: auditStructure(raw) }
@@ -279,9 +281,72 @@ function rulesTool() {
   })
 }
 
+
+/** 按需清理工具：只改可机械修正的排版问题。 */
+function fixTool() {
+  return makeTool({
+    name: 'prose_fix',
+    description:
+      '按需清掉可机械修正的排版问题，默认只清汉字与英文/数字之间的空格。' +
+      '给 path 就地改写文件，给 text 返回改好的文本。Triggers: 清理空格, 排版修正, 去掉多余空格.',
+    parameters: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: '要修的文本' },
+        path: { type: 'string', description: '要就地改写的文件，与text二选一' },
+        kinds: { type: 'array', description: '要修的检查项，默认cjk-latin-space' },
+        dryRun: { type: 'boolean', description: '只看结果不写文件' },
+      },
+    },
+    render(_args, value) {
+      if (!value || value.ok === false) return text(value?.error ?? '修正失败。')
+      const lines = [`改了${value.applied}处`]
+      if (value.path) lines.push(`文件：${value.path}（${value.bytes}字节）${value.written ? '' : '，未写入'}`)
+      if (typeof value.text === 'string') lines.push('', value.text)
+      return text(lines.join('\n'))
+    },
+    timeoutMs: 30_000,
+    async execute(args) {
+      const filePath = args.path ? resolve(String(args.path)) : ''
+      if (!filePath && typeof args.text !== 'string') {
+        return { ok: false, error: '要么给text（文本），要么给path（文件路径）。' }
+      }
+
+      let source = args.text
+      if (filePath) {
+        try {
+          source = decodeText(await readFile(filePath))
+        } catch {
+          return { ok: false, error: `读不到文件：${filePath}` }
+        }
+      }
+
+      const result = fixTypography(source, { kinds: args.kinds })
+      if (result.ok === false) return result
+
+      const written = Boolean(filePath) && args.dryRun !== true && result.applied > 0
+      if (written) {
+        try {
+          await writeFile(filePath, result.text, 'utf8')
+        } catch (error) {
+          return { ok: false, error: `写入失败：${error instanceof Error ? error.message : String(error)}` }
+        }
+      }
+
+      return {
+        ok: true,
+        applied: result.applied,
+        written,
+        ...(filePath ? { path: filePath, bytes: Buffer.byteLength(result.text, 'utf8') } : { text: result.text }),
+      }
+    },
+  })
+}
+
 /** 本插件贡献的全部工具。 */
 export function proseTools(config = {}) {
-  return [scanTool(config), rulesTool()]
+  const settings = { ...DEFAULTS, ...(config ?? {}) }
+  return [scanTool(settings), fixTool(), rulesTool()]
 }
 
 // ---------------------------------------------------------------- 技能

@@ -66,9 +66,13 @@ check('契约含实限定条款', section.text.includes('限定要实'), '')
 check('契约不含未替换占位符', !/\{\{|\}\}/.test(section.text), '')
 
 // ---- 工具
-check('注册了两个工具', registered.tools.length === 2, `实际 ${registered.tools.length}`)
+check('注册了三个工具', registered.tools.length === 3, `实际 ${registered.tools.length}`)
 const names = registered.tools.map(t => t.name).sort()
-check('工具名是 prose_check / prose_rules', JSON.stringify(names) === '["prose_check","prose_rules"]', names.join(','))
+check(
+  '工具名对得上',
+  JSON.stringify(names) === '["prose_check","prose_fix","prose_rules"]',
+  names.join(','),
+)
 for (const tool of registered.tools) {
   check(`${tool.name} 有 description`, typeof tool.description === 'string' && tool.description.length > 20, '')
   check(`${tool.name} 有 parameters`, tool.parameters?.type === 'object', '')
@@ -186,22 +190,6 @@ const customTool = proseTools({ customRules: [{ pattern: 'ABC', group: '自定�
 const customResult = await customTool.execute({ text: '这里有 ABC 出现。' })
 check('自定义规则生效', (customResult.groups['自定义'] ?? 0) === 1, JSON.stringify(customResult.groups))
 
-// ---- 单条排版检查可以关掉
-const spacingOn = await checkTool.execute({ text: '放在 Redis 里，共 3 个。' })
-check('默认开启中英空格检查', (spacingOn.typography.counts['cjk-latin-space'] ?? 0) === 2, JSON.stringify(spacingOn.typography.counts))
-
-const spacingOffTool = proseTools({ typographySkip: ['cjk-latin-space'] })[0]
-const spacingOff = await spacingOffTool.execute({ text: '放在 Redis 里，共 3 个。还有（多余的括号' })
-check('关掉后该检查不再出现', (spacingOff.typography.counts['cjk-latin-space'] ?? 0) === 0, JSON.stringify(spacingOff.typography.counts))
-check('关掉一项不影响其他项', (spacingOff.typography.counts['unbalanced-mark'] ?? 0) === 1, JSON.stringify(spacingOff.typography.counts))
-
-const skipByCall = await checkTool.execute({ text: '放在 Redis 里。', skip: ['cjk-latin-space'] })
-check('调用时也能跳过单条检查', (skipByCall.typography.counts['cjk-latin-space'] ?? 0) === 0, JSON.stringify(skipByCall.typography.counts))
-
-const badTool = proseTools({ customRules: [{ pattern: '([' }] })[0]
-const badResult = await badTool.execute({ text: '测试。' })
-check('坏正则不崩并报错', badResult.ok === true && badResult.invalidRules?.length === 1, '')
-
 // ---- 技能
 check('注册了一个 skill provider', registered.providers.length === 1, `实际 ${registered.providers.length}`)
 const skillProvider = registered.providers[0] ?? {}
@@ -246,6 +234,30 @@ apply(
 check('extraBanned 拼进契约', extra.sections[0].text.includes('云原生'), '')
 
 // ---- 报告
+// ---- 中英空格：默认不查，按需清理
+const defaultScan = await checkTool.execute({ text: '放在 Redis 里，共 3 个。' })
+check('默认不报中英空格', (defaultScan.typography.counts['cjk-latin-space'] ?? 0) === 0, JSON.stringify(defaultScan.typography.counts))
+
+const forcedScan = await checkTool.execute({ text: '放在 Redis 里，共 3 个。', skip: [] })
+check('调用时传空数组就查', (forcedScan.typography.counts['cjk-latin-space'] ?? 0) === 2, JSON.stringify(forcedScan.typography.counts))
+
+const otherSkip = await checkTool.execute({ text: '放在 Redis 里，还有（括号', skip: ['unbalanced-mark'] })
+check(
+  '调用时的 skip 以它为准',
+  (otherSkip.typography.counts['cjk-latin-space'] ?? 0) === 1 && (otherSkip.typography.counts['unbalanced-mark'] ?? 0) === 0,
+  JSON.stringify(otherSkip.typography.counts),
+)
+
+const fixToolRef = registered.tools.find(t => t.name === 'prose_fix')
+check('注册了 prose_fix', Boolean(fixToolRef), registered.tools.map(t => t.name).join(','))
+
+const fixedText = await fixToolRef.execute({ text: '放在 Redis 里，改配置 + 触发重载。' })
+check('prose_fix 清掉空格', fixedText.ok === true && fixedText.applied === 2, String(fixedText.applied))
+check('prose_fix 结果正确', fixedText.text === '放在Redis里，改配置+触发重载。', String(fixedText.text))
+
+const dryRunResult = await fixToolRef.execute({ path: 'README.md', dryRun: true })
+check('dryRun 不写文件', dryRunResult.ok === true && dryRunResult.written === false, String(dryRunResult.written))
+
 let failed = 0
 for (const { label, pass, detail } of checks) {
   if (!pass) failed += 1

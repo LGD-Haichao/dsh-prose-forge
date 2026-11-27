@@ -333,7 +333,8 @@ export function auditTypography(text, options = {}) {
   }
 
   try {
-    const limit = Math.max(1, Math.min(200, Number(options.limit) || 30))
+    const raw = options.raw === true
+    const limit = raw ? Number.MAX_SAFE_INTEGER : Math.max(1, Math.min(200, Number(options.limit) || 30))
     const skip = Array.isArray(options.skip) ? new Set(options.skip) : new Set()
     const starts = lineStarts(text)
     const findings = []
@@ -367,7 +368,7 @@ export function auditTypography(text, options = {}) {
             line,
             col,
             index: match.index,
-            match: match[0].length > 40 ? `${match[0].slice(0, 40)}…` : match[0],
+            match: !raw && match[0].length > 40 ? `${match[0].slice(0, 40)}…` : match[0],
             advice: rule.advice,
             ...(fixer ? { fix: fixer(match[0]) } : {}),
           })
@@ -396,7 +397,9 @@ export function auditTypography(text, options = {}) {
       counts,
       fixable: kept.filter(item => item.fix !== undefined).length,
       truncated,
-      findings: (truncated ? kept.slice(0, limit) : kept).map(({ index: _index, ...rest }) => rest),
+      findings: raw
+        ? kept
+        : (truncated ? kept.slice(0, limit) : kept).map(({ index: _index, ...rest }) => rest),
     }
   } catch (error) {
     return { ok: false, error: `排版体检失败：${error instanceof Error ? error.message : String(error)}` }
@@ -409,3 +412,34 @@ export const TYPO_KINDS = [
   'cjk-latin-space',
   'unbalanced-mark',
 ]
+
+/**
+ * 按检查结果改写文本。
+ *
+ * 默认只清汉字与英文/数字之间的空格——那条约定没定死，所以做成按需调用：
+ * 平时扫描不报，想清的时候调这个。
+ *
+ * @param {string} text - 原文
+ * @param {object} [options]
+ * @param {string[]} [options.kinds] - 要修的检查项，默认 ['cjk-latin-space']
+ * @returns {{ ok: boolean, applied?: number, text?: string, error?: string }} 结果
+ */
+export function fixTypography(text, options = {}) {
+  if (typeof text !== 'string') return { ok: false, error: '没有可修的文本。' }
+  const kinds = new Set(
+    Array.isArray(options.kinds) && options.kinds.length > 0 ? options.kinds : ['cjk-latin-space'],
+  )
+
+  const report = auditTypography(text, { raw: true, skip: [] })
+  if (report.ok === false) return { ok: false, error: report.error }
+
+  const targets = report.findings
+    .filter(finding => typeof finding.fix === 'string' && kinds.has(finding.kind))
+    .sort((a, b) => b.index - a.index)
+
+  let out = text
+  for (const finding of targets) {
+    out = out.slice(0, finding.index) + finding.fix + out.slice(finding.index + finding.match.length)
+  }
+  return { ok: true, applied: targets.length, text: out }
+}
