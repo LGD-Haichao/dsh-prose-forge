@@ -1,4 +1,7 @@
-# dsh-prose-forge（文风锻造）
+# 文风锻造（dsh-prose-forge）
+
+![封面](assets/cover-wide.png)
+
 
 让DeepSeek Harness 说人话，并且会写文件。
 

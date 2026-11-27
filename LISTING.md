@@ -67,7 +67,9 @@ It scans a file without pulling it into the conversation, so a 5,000-word draft 
 
 | 文件 | 用途 |
 | --- | --- |
-| `assets/scan-report.png` | 实际扫描输出渲染图，1180×1354，可直接当封面 |
+| `assets/cover-wide.png` | 封面横版，1200×630，适合仓库社交预览和文章头图 |
+| `assets/cover-square.png` | 封面方版，880×880，适合市场列表缩略图 |
+| `assets/scan-report.png` | 实际扫描输出渲染图，1180×1354，适合放详情页当证据 |
 | `dist/prose-forge-write.zip` | 写作流程 skill 的打包，含 SKILL.md、REQUIRES.md、LICENSE |
 | `dist/prose-forge-doc.zip` | 文件交付 skill 的打包，同上 |
 
