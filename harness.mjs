@@ -280,6 +280,19 @@ await writeFile(fixPlainPath, '放在 Redis 里。', 'utf8')
 const plainFixed = await fixToolRef.execute({ path: fixPlainPath })
 check('UTF-8 确实写盘', plainFixed.written === true && (await readFile(fixPlainPath, 'utf8')) === '放在Redis里。', '')
 
+// ---- prose_fix 不许动代码块和 frontmatter
+const inlineCode = await fixToolRef.execute({ text: '示例：`共 3 个` 说明。' })
+check('行内代码不被修改', inlineCode.applied === 0 && inlineCode.text.includes('共 3 个'), String(inlineCode.applied))
+
+const fenced = await fixToolRef.execute({ text: '说明：\n\n\`\`\`\n放在 Redis 里\n\`\`\`\n\n结束。' })
+check('围栏代码块不被修改', fenced.applied === 0 && fenced.text.includes('放在 Redis 里'), String(fenced.applied))
+
+const front = await fixToolRef.execute({ text: '---\ntitle: 共 3 个\n---\n\n正文 共 3 个。' })
+check('frontmatter 不被修改', front.text.includes('title: 共 3 个') && front.text.includes('正文 共3个。'), String(front.applied))
+
+const outside = await fixToolRef.execute({ text: '说 `共 3 个` 之后，实际是 4 个文件。' })
+check('代码外的正文照修', outside.text === '说 `共 3 个` 之后，实际是4个文件。', outside.text)
+
 let failed = 0
 for (const { label, pass, detail } of checks) {
   if (!pass) failed += 1

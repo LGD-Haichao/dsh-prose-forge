@@ -225,17 +225,19 @@ function isMasked(char) {
  * 只掩二十字以内的，长段引用照扫——长引用里可能真是一段AI腔。
  *
  * @param {string} text - 原文
- * @returns {{ masked: string, codeChars: number }} 掩码文本与代码字符数
+ * @returns {{ masked: string, codeChars: number, ranges: number[][] }} 掩码文本、代码字数、被掩区间
  */
-function maskText(text) {
+export function maskText(text) {
   const buf = text.split('')
   let codeChars = 0
+  const ranges = []
 
   /**
    * 把一段区间涂成掩码；count为真时计入代码字数。
    * 换行不涂——掩码一旦吃掉换行，后面所有行号都会前移，报告里的定位全错。
    */
   const paint = (from, to, count) => {
+    if (to > from) ranges.push([from, to])
     for (let i = from; i < to; i += 1) {
       if (buf[i] === '\n') continue
       if (!isMasked(buf[i]) && count) codeChars += 1
@@ -283,7 +285,7 @@ function maskText(text) {
     if (innerLength > 0) paint(innerStart, innerStart + innerLength, false)
   }
 
-  return { masked: buf.join(''), codeChars }
+  return { masked: buf.join(''), codeChars, ranges }
 }
 
 /**

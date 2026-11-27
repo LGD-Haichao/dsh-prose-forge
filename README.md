@@ -243,6 +243,7 @@ node node_modules/dsh-prose-forge/selftest.mjs
 - 插件目录放纯 ASCII 路径。Windows 下 CLI 传参会把中文路径转成乱码，这是踩过的坑。
 - 换行统一 LF（`.gitattributes` 里钉死），macOS 和 Linux 上不会出现满屏 CRLF 差异。
 - 读文件按 BOM 认编码，UTF-8、UTF-8 BOM、UTF-16LE、UTF-16BE 都能读；`prose_fix` 写回时按原编码写，不会把 UTF-16 文件偷偷改成 UTF-8。
+- `prose_fix` 只改正文。代码块、行内代码、URL、frontmatter 和短引文一律不动——示例代码里的空格是内容，不是排版错误。
 
 ## 自测
 

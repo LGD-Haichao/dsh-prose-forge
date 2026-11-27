@@ -474,6 +474,7 @@ export const TYPO_KINDS = [
  * @param {string} text - 原文
  * @param {object} [options]
  * @param {string[]} [options.kinds] - 要修的检查项，默认 ['cjk-latin-space']
+ * @param {number[][]} [options.exclude] - 不许动的区间，代码块、URL、frontmatter 都在这里面
  * @returns {{ ok: boolean, applied?: number, text?: string, error?: string }} 结果
  */
 export function fixTypography(text, options = {}) {
@@ -481,12 +482,17 @@ export function fixTypography(text, options = {}) {
   const kinds = new Set(
     Array.isArray(options.kinds) && options.kinds.length > 0 ? options.kinds : ['cjk-latin-space'],
   )
+  const exclude = Array.isArray(options.exclude) ? options.exclude : []
 
   const report = auditTypography(text, { raw: true, skip: [] })
   if (report.ok === false) return { ok: false, error: report.error }
 
+  // 落在代码块、URL、frontmatter 里的命中一律不动。检查阶段这些区域会被掩掉，
+  // 修复阶段如果不拦一遍，就会把示例代码里的空格也清掉——那是在改别人的代码。
+  const touched = finding => exclude.some(([from, to]) => finding.index < to && finding.index + finding.match.length > from)
+
   const targets = report.findings
-    .filter(finding => typeof finding.fix === 'string' && kinds.has(finding.kind))
+    .filter(finding => typeof finding.fix === 'string' && kinds.has(finding.kind) && !touched(finding))
     .sort((a, b) => b.index - a.index)
 
   let out = text

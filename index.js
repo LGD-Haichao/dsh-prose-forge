@@ -19,7 +19,7 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { STYLE_PROMPT, STYLE_SECTION_NAME, STYLE_SECTION_ORDER } from './prompt.js'
-import { analyze, auditStructure } from './analyze.js'
+import { analyze, auditStructure, maskText } from './analyze.js'
 import { fixTypography } from './typography.js'
 import { PARTS, lookup } from './rules.js'
 
@@ -362,7 +362,7 @@ function fixTool() {
         }
       }
 
-      const result = fixTypography(source, { kinds: args.kinds })
+      const result = fixTypography(source, { kinds: args.kinds, exclude: maskText(source).ranges })
       if (result.ok === false) return result
 
       const written = Boolean(filePath) && args.dryRun !== true && result.applied > 0
