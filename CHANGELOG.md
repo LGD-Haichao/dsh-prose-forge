@@ -1,5 +1,9 @@
 # 变更记录
 
+## 0.6.5
+
+- 版本标记，用于验证从 GitHub 更新到新版本的链路是否真的生效。
+
 ## 0.6.4
 
 - **安装与更新链路实测通过。** 干净目录 `pnpm add github:…` 装好 20 个文件；装好的那份 81 + 89 + 17 全过；`pnpm update` 从 0.6.2 升到 0.6.3；新建 profile 后 `dsh plugin add github:…` 会自动写进 `bundles`，`--dump-config` 能看到挂载行。
