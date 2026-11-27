@@ -186,6 +186,15 @@ const customTool = proseTools({ customRules: [{ pattern: 'ABC', group: '自定�
 const customResult = await customTool.execute({ text: '这里有 ABC 出现。' })
 check('自定义规则生效', (customResult.groups['自定义'] ?? 0) === 1, JSON.stringify(customResult.groups))
 
+// ---- 单条排版检查可以关掉
+const spacingOn = await checkTool.execute({ text: '放在 Redis 里，共 3 个。' })
+check('默认开启中英空格检查', (spacingOn.typography.counts['cjk-latin-space'] ?? 0) === 2, JSON.stringify(spacingOn.typography.counts))
+
+const spacingOffTool = proseTools({ typographySkip: ['cjk-latin-space'] })[0]
+const spacingOff = await spacingOffTool.execute({ text: '放在 Redis 里，共 3 个。还有（多余的括号' })
+check('关掉后该检查不再出现', (spacingOff.typography.counts['cjk-latin-space'] ?? 0) === 0, JSON.stringify(spacingOff.typography.counts))
+check('关掉一项不影响其他项', (spacingOff.typography.counts['unbalanced-mark'] ?? 0) === 1, JSON.stringify(spacingOff.typography.counts))
+
 const badTool = proseTools({ customRules: [{ pattern: '([' }] })[0]
 const badResult = await badTool.execute({ text: '测试。' })
 check('坏正则不崩并报错', badResult.ok === true && badResult.invalidRules?.length === 1, '')

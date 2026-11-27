@@ -632,7 +632,7 @@ export function analyze(text, options = {}) {
       hits: kept.map(({ index: _index, rule: _rule, ...rest }) => rest),
       stats,
       notes: structuralNotes(stats, mode),
-      typography: auditTypography(masked),
+      typography: auditTypography(masked, { skip: options.typographySkip }),
       ...(custom.invalid.length > 0 ? { invalidRules: custom.invalid } : {}),
     }
   } catch (error) {

@@ -373,23 +373,31 @@ export function auditTypography(text, options = {}) {
     findings.push(...latinSpacingFindings(text, starts))
     findings.push(...balanceFindings(text, starts))
 
-    findings.sort((a, b) => a.index - b.index)
+    // skip 要作用到全部检查，不只是正则那批。数字空格和配对检查是后加的，
+    // 如果只在规则循环里判 skip，它们会绕过去。
+    const kept = skip.size > 0 ? findings.filter(finding => !skip.has(finding.kind)) : findings
+
+    kept.sort((a, b) => a.index - b.index)
     const counts = {}
-    for (const finding of findings) counts[finding.kind] = (counts[finding.kind] ?? 0) + 1
-    const truncated = findings.length > limit
+    for (const finding of kept) counts[finding.kind] = (counts[finding.kind] ?? 0) + 1
+    const truncated = kept.length > limit
 
     return {
       ok: true,
-      total: findings.length,
+      total: kept.length,
       counts,
-      fixable: findings.filter(item => item.fix !== undefined).length,
+      fixable: kept.filter(item => item.fix !== undefined).length,
       truncated,
-      findings: (truncated ? findings.slice(0, limit) : findings).map(({ index: _index, ...rest }) => rest),
+      findings: (truncated ? kept.slice(0, limit) : kept).map(({ index: _index, ...rest }) => rest),
     }
   } catch (error) {
     return { ok: false, error: `排版体检失败：${error instanceof Error ? error.message : String(error)}` }
   }
 }
 
-/** 供测试与外部复用：规则清单的形状。 */
-export const TYPO_KINDS = RULES.map(rule => rule.kind)
+/** 已知的检查项，写进文档和配置校验用。 */
+export const TYPO_KINDS = [
+  ...RULES.map(rule => rule.kind),
+  'cjk-latin-space',
+  'unbalanced-mark',
+]

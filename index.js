@@ -34,6 +34,7 @@ const DEFAULTS = {
   registerSkills: true,
   extraBanned: [],
   customRules: [],
+  typographySkip: [],
 }
 
 const SKILLS_DIR = fileURLToPath(new URL('./skills/', import.meta.url))
@@ -221,7 +222,7 @@ function scanTool(config = {}) {
         return { ok: false, error: '要么给text（文本），要么给path（文件路径）。' }
       }
       if (!filePath) {
-        return analyze(args.text, { mode, limit, customRules: config.customRules })
+        return analyze(args.text, { mode, limit, customRules: config.customRules, typographySkip: config.typographySkip })
       }
 
       let info
@@ -242,7 +243,7 @@ function scanTool(config = {}) {
       const raw = decodeText(buffer)
       if (raw.includes('\u0000')) return { ok: false, error: `看起来是二进制文件，跳过：${filePath}` }
 
-      const report = analyze(raw, { mode, limit, customRules: config.customRules })
+      const report = analyze(raw, { mode, limit, customRules: config.customRules, typographySkip: config.typographySkip })
       if (report.ok === false) return report
 
       return { ...report, path: filePath, bytes: info.size, audit: auditStructure(raw) }
