@@ -243,14 +243,19 @@ function latinSpacingFindings(text, starts) {
 
   // 一个拉丁标记：Redis、v2.3.1、5G、50%、config.yaml都算一个整体。
   // 末尾允许「空格 + 百分号」，好让50 % 和前面的空格一起收掉。
-  const token = String.raw`[A-Za-z0-9](?:[A-Za-z0-9._#+%‰'’/-]*[A-Za-z0-9%‰])?(?:[ \t]*[%‰％])?`
+  // 结尾不许是点或连字符，否则会把句号、范围号一并吞进来。
+  const MID = String.raw`A-Za-z0-9._#+%‰'’/@°℃-`
+  const END = String.raw`A-Za-z0-9_+#%‰°℃`
+  const token = String.raw`[A-Za-z0-9](?:[${MID}]*[${END}])?(?:[ \t]*[%‰％])?`
   const compact = value => value.replace(/[ \t]+/g, '')
 
   // 一、汉字 标记 汉字：任一侧有空格就压掉。
-  for (const match of text.matchAll(new RegExp(`([一-龥])([ \\t]*)(${token})([ \\t]*)([一-龥])`, 'g'))) {
-    const [, left, gapBefore, core, gapAfter, right] = match
+  // 右边那个汉字用前瞻，不吞进匹配——吞了它，「A 和 B 和 C」里的 B 就没法
+  // 再跟后面的 C 组队，一条句子里相邻的几处只会修到一半。
+  for (const match of text.matchAll(new RegExp(`([一-龥])([ \\t]*)(${token})([ \\t]*)(?=[一-龥])`, 'g'))) {
+    const [, left, gapBefore, core, gapAfter] = match
     if (gapBefore === '' && gapAfter === '') continue
-    push(match.index, match[0], `${left}${compact(core)}${right}`)
+    push(match.index, match[0], `${left}${compact(core)}`)
   }
 
   // 二、汉字 空格 标记，标记后面不是汉字：共3 files。前置空格删掉，后面留给英文。
@@ -259,16 +264,16 @@ function latinSpacingFindings(text, starts) {
   }
 
   // 三、行首或标点之后的标记 + 空格 + 汉字：v2.3.1版本、2024年的数据。
-  for (const match of text.matchAll(new RegExp(`(^|[，。、；：！？）】」”])[ \\t]*(${token})([ \\t]+)([一-龥])`, 'gm'))) {
-    push(match.index, match[0], `${match[1]}${compact(match[2])}${match[4]}`)
+  for (const match of text.matchAll(new RegExp(`(^|[，。、；：！？）】」”])[ \\t]*(${token})([ \\t]+)(?=[一-龥])`, 'gm'))) {
+    push(match.index, match[0], `${match[1]}${compact(match[2])}`)
   }
 
   // 四、汉字 空格 符号 空格 汉字：改配置 + 触发重载 → 改配置+触发重载。
-  // 只认几个常见连接符号，斜杠和竖线不碰——那是路径和表格。
-  for (const match of text.matchAll(/([一-龥])([ \t]*)([+&×÷=~·/])([ \t]*)([一-龥])/g)) {
-    const [, left, gapBefore, symbol, gapAfter, right] = match
+  // 同样用前瞻，好让「甲 + 乙 + 丙」里的乙能继续往后组队。
+  for (const match of text.matchAll(/([一-龥])([ \t]*)([+&×÷=~·/])([ \t]*)(?=[一-龥])/g)) {
+    const [, left, gapBefore, symbol, gapAfter] = match
     if (gapBefore === '' && gapAfter === '') continue
-    push(match.index, match[0], `${left}${symbol}${right}`)
+    push(match.index, match[0], `${left}${symbol}`)
   }
 
   return out
