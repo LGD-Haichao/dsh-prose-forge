@@ -362,7 +362,12 @@ function fixTool() {
         }
       }
 
-      const result = fixTypography(source, { kinds: args.kinds, exclude: maskText(source).ranges })
+      // 传函数而不是数组：多遍修复时每遍都要按当前文本重算掩码区间，
+      // 否则第一遍改了长度，第二遍的区间就对不上了。
+      const result = fixTypography(source, {
+        kinds: args.kinds,
+        exclude: current => maskText(current).ranges,
+      })
       if (result.ok === false) return result
 
       const written = Boolean(filePath) && args.dryRun !== true && result.applied > 0
@@ -378,6 +383,7 @@ function fixTool() {
         ok: true,
         version: PLUGIN_VERSION,
         applied: result.applied,
+        passes: result.passes,
         written,
         ...(filePath
           ? { path: filePath, bytes: Buffer.byteLength(result.text, 'utf8'), encoding }

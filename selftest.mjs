@@ -322,6 +322,18 @@ const checks = [
   ['全角数字被标出', (auditTypography('２０２４年的数据。').counts['fullwidth-alnum'] ?? 0) === 1],
   ['全角数字能修成半角', fixTypography('２０２４年。', { kinds: ['fullwidth-alnum'] }).text === '2024年。'],
   ['全角字母能修', fixTypography('用Ｒｅｄｉｓ缓存。', { kinds: ['fullwidth-alnum'] }).text === '用Redis缓存。'],
+  [
+    '多类修复一遍就稳定',
+    fixTypography('全角数字 ２０２４ 年。', { kinds: ['fullwidth-alnum', 'cjk-latin-space'] }).text ===
+      '全角数字2024年。',
+  ],
+  [
+    '再修一次不再变化',
+    fixTypography(
+      fixTypography('全角数字 ２０２４ 年。', { kinds: ['fullwidth-alnum', 'cjk-latin-space'] }).text,
+      { kinds: ['fullwidth-alnum', 'cjk-latin-space'] },
+    ).applied === 0,
+  ],
   ['斜杠两侧空格也收', auditTypography('和 / 或').findings.some(f => f.fix === '和/')],
   ['型号两侧空格都清', (auditTypography('跑在 5G 网络上。').counts['cjk-latin-space'] ?? 0) === 1],
   [

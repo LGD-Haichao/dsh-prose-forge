@@ -557,30 +557,42 @@ export const TYPO_KINDS = [
  * @param {string} text - 原文
  * @param {object} [options]
  * @param {string[]} [options.kinds] - 要修的检查项，默认 ['cjk-latin-space']
- * @param {number[][]} [options.exclude] - 不许动的区间，代码块、URL、frontmatter 都在这里面
- * @returns {{ ok: boolean, applied?: number, text?: string, error?: string }} 结果
+ * @param {number[][]|function} [options.exclude] - 不许动的区间，或返回区间的函数（每遍重算）
+ * @returns {{ ok: boolean, applied?: number, passages?: number, text?: string, error?: string }} 结果
  */
 export function fixTypography(text, options = {}) {
   if (typeof text !== 'string') return { ok: false, error: '没有可修的文本。' }
   const kinds = new Set(
     Array.isArray(options.kinds) && options.kinds.length > 0 ? options.kinds : ['cjk-latin-space'],
   )
-  const exclude = Array.isArray(options.exclude) ? options.exclude : []
-
-  const report = auditTypography(text, { raw: true, skip: [] })
-  if (report.ok === false) return { ok: false, error: report.error }
-
-  // 落在代码块、URL、frontmatter 里的命中一律不动。检查阶段这些区域会被掩掉，
-  // 修复阶段如果不拦一遍，就会把示例代码里的空格也清掉——那是在改别人的代码。
-  const touched = finding => exclude.some(([from, to]) => finding.index < to && finding.index + finding.match.length > from)
-
-  const targets = report.findings
-    .filter(finding => typeof finding.fix === 'string' && kinds.has(finding.kind) && !touched(finding))
-    .sort((a, b) => b.index - a.index)
+  // 一遍改不干净：把全角数字换成半角之后，新出现的 ASCII 数字才满足「中英之间不留空格」，
+  // 那是第二遍才看得见的。所以反复修到稳定，但设个上限防止规则互相打架时死循环。
+  const excludeOf = passText =>
+    typeof options.exclude === 'function' ? options.exclude(passText) ?? [] : options.exclude ?? []
 
   let out = text
-  for (const finding of targets) {
-    out = out.slice(0, finding.index) + finding.fix + out.slice(finding.index + finding.match.length)
+  let applied = 0
+  let passes = 0
+  for (let round = 0; round < 4; round += 1) {
+    const report = auditTypography(out, { raw: true, skip: [] })
+    if (report.ok === false) return { ok: false, error: report.error }
+
+    const exclude = excludeOf(out)
+    // 落在代码块、URL、frontmatter 里的命中一律不动。检查阶段这些区域会被掩掉，
+    // 修复阶段如果不拦一遍，就会把示例代码里的空格也清掉——那是在改别人的代码。
+    const touched = finding =>
+      exclude.some(([from, to]) => finding.index < to && finding.index + finding.match.length > from)
+
+    const targets = report.findings
+      .filter(finding => typeof finding.fix === 'string' && kinds.has(finding.kind) && !touched(finding))
+      .sort((a, b) => b.index - a.index)
+
+    if (targets.length === 0) break
+    passes += 1
+    applied += targets.length
+    for (const finding of targets) {
+      out = out.slice(0, finding.index) + finding.fix + out.slice(finding.index + finding.match.length)
+    }
   }
-  return { ok: true, applied: targets.length, text: out }
+  return { ok: true, applied, passes, text: out }
 }
