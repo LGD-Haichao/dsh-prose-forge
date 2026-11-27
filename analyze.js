@@ -360,7 +360,19 @@ export function auditStructure(text) {
     }
     buffer = []
   }
+  let inFence = false
   lines.forEach((line, idx) => {
+    // 代码块整块跳过。代码行可能很长，但那是代码，不是「读不到落点的段落」。
+    const isFence = /^\s*(?:```|~~~)/.test(line)
+    if (isFence) {
+      flushParagraph()
+      inFence = !inFence
+      return
+    }
+    if (inFence) {
+      flushParagraph()
+      return
+    }
     const breaksParagraph =
       line.trim() === '' ||
       /^#{1,6}[ \t]+/.test(line) ||

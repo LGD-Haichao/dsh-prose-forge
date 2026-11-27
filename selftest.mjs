@@ -201,6 +201,18 @@ const checks = [
   ],
   ['中文编号标题识别为文档', analyze(NUMBERED_DOC).mode === 'doc'],
   ['结构审计数出中文标题', auditStructure(NUMBERED_DOC).headingCount === 3],
+  [
+    '代码块不算长段落',
+    auditStructure('# 标题\n\n\`\`\`\n' + 'const a = 1; '.repeat(80) + '\n\`\`\`\n').findings.every(
+      f => f.kind !== 'long-paragraph',
+    ),
+  ],
+  [
+    '真的长段落仍然报',
+    auditStructure('# 标题\n\n' + '这是一段很长的文字。'.repeat(60) + '\n').findings.some(
+      f => f.kind === 'long-paragraph',
+    ),
+  ],
   ['中文编号的八股标题被抓', (analyze(CLICHE_DOC).groups['标题八股'] ?? 0) > 0],
   ['单个命中不判模板腔', analyze(ONE_HIT_EN).verdict === 'mostly clean'],
   ['两处命中仍压在同一档', analyze(ONE_HIT_EN).hitCount === 1],
