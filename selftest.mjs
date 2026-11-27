@@ -205,6 +205,19 @@ const checks = [
   ['单个命中不判模板腔', analyze(ONE_HIT_EN).verdict === 'mostly clean'],
   ['两处命中仍压在同一档', analyze(ONE_HIT_EN).hitCount === 1],
   ['三处命中照常判模板腔', analyze(THREE_HITS_EN).verdict !== 'clean'],
+  [
+    'YAML frontmatter 不计入排版',
+    analyze('---\nname: x\ndescription: 写成文件, 出个文档, 交付\n---\n\n正文。').typography.total === 0,
+  ],
+  [
+    'URL 不干扰中文语境判定',
+    analyze('[名](https://example.com/a)（MIT，Copyright 2026）').typography.total === 0,
+  ],
+  ['短引文里的禁用词不算命中', analyze('不要写“值得注意的是”这种话。').hitCount === 0],
+  [
+    '长引文照常扫描',
+    (analyze(`引文：“值得注意的是${'还有很长的一段内容'.repeat(6)}”结束。`).hitCount ?? 0) > 0,
+  ],
   ['排版：行尾空格被抓住', (analyze('这行有空格   \n下一行。').typography.counts['trailing-space'] ?? 0) > 0],
   [
     '排版：代码块里的半角标点不算',

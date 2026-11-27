@@ -213,53 +213,70 @@ function isMasked(char) {
 }
 
 /**
- * 把围栏代码块整块替换成等长掩码，保留换行。
+ * 把不该按散文规则扫描的内容掩成等长掩码，保留换行。
  *
- * 目的有两个：代码不该按散文规则扫描（契约里写明代码例外），
- * 而用等长替换而不是删除，是为了让字符下标完全不变——行列号仍然对得上原文。
+ * 掩掉四类：围栏代码块、行内代码（单/双反引号）、URL、短引文。
+ * 用等长替换而不是删除，是为了让字符下标完全不变——行列号仍然对得上原文。
+ *
+ * URL 要掩：技术文档里 `[名字](https://…)` 紧跟中文标点时，
+ * 判定窗口会落在 URL 里，一个汉字都没有，于是把正常的中文标点误判成英文标点。
+ *
+ * 短引文也要掩：文章里引用「值得注意的是」是在讲它，不是在用它。
+ * 只掩二十字以内的，长段引用照扫——长引用里可能真是一段 AI 腔。
  *
  * @param {string} text - 原文
  * @returns {{ masked: string, codeChars: number }} 掩码文本与代码字符数
  */
-function maskCodeFences(text) {
+function maskText(text) {
   const buf = text.split('')
-  let inFence = false
   let codeChars = 0
-  let cursor = 0
 
+  /** 把一段区间涂成掩码；count 为真时计入代码字数。 */
+  const paint = (from, to, count) => {
+    for (let i = from; i < to; i += 1) {
+      if (!isMasked(buf[i]) && count) codeChars += 1
+      buf[i] = MASK
+    }
+  }
+
+  // YAML frontmatter：文件的元数据，不是正文。
+  const frontmatter = /^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/.exec(text)
+  if (frontmatter) paint(0, frontmatter[0].length, false)
+
+  // 围栏代码块
+  let inFence = false
+  let cursor = 0
   while (cursor <= text.length) {
     const newline = text.indexOf('\n', cursor)
     const end = newline === -1 ? text.length : newline
     const line = text.slice(cursor, end)
     const isFence = /^\s*(?:```|~~~)/.test(line)
-
-    if (isFence || inFence) {
-      for (let i = cursor; i < end; i += 1) {
-        if (!isMasked(buf[i])) codeChars += 1
-        buf[i] = MASK
-      }
-    }
+    if (isFence || inFence) paint(cursor, end, true)
     if (isFence) inFence = !inFence
     if (newline === -1) break
     cursor = newline + 1
   }
 
-  // 双反引号包住的片段要先处理：markdown 里 `` `代码` `` 靠外层双反引号转义，
-  // 只按单反引号匹配的话，内层正文会被漏掉。
+  // 双反引号包住的片段要先处理：markdown 里 `` `代码` `` 靠外层双反引号转义。
   for (const match of text.matchAll(/``[\s\S]{0,180}?``/g)) {
-    for (let i = match.index; i < match.index + match[0].length; i += 1) {
-      if (!isMasked(buf[i])) codeChars += 1
-      buf[i] = MASK
-    }
+    paint(match.index, match.index + match[0].length, true)
   }
 
-  // 行内代码：单个反引号包住的内容同样是代码，不该按散文规则扫。
-  // 围栏行已经被上面掩成掩码，这里再掩一次不会重复计数。
+  // 行内代码
   for (const match of text.matchAll(/`[^`\n]+`/g)) {
-    for (let i = match.index; i < match.index + match[0].length; i += 1) {
-      if (!isMasked(buf[i])) codeChars += 1
-      buf[i] = MASK
-    }
+    paint(match.index, match.index + match[0].length, true)
+  }
+
+  // URL：不算代码，但同样不该按散文扫。
+  for (const match of text.matchAll(/https?:\/\/[^\s<>"'）)【】\]]+/g)) {
+    paint(match.index, match.index + match[0].length, false)
+  }
+
+  // 短引文：只掩引号里面的内容，引号本身留着，好让排版规则继续判断引号用法。
+  for (const match of text.matchAll(/[“「『]([^”」』\n]{1,20})[”」』]/g)) {
+    const innerStart = match.index + 1
+    const innerLength = match[1].length
+    if (innerLength > 0) paint(innerStart, innerStart + innerLength, false)
   }
 
   return { masked: buf.join(''), codeChars }
@@ -546,8 +563,8 @@ export function analyze(text, options = {}) {
         : requested
     const limit = clamp(options.limit ?? 40, 1, 200)
 
-    // 代码块先掩成等长掩码：代码不受散文规则约束，但下标不能动，行列号才对得上。
-    const { masked, codeChars } = maskCodeFences(source)
+    // 代码、URL、短引文先掩掉：它们不受散文规则约束，但下标不能动，行列号才对得上。
+    const { masked, codeChars } = maskText(source)
 
     const starts = buildLineStarts(source)
     const hits = []

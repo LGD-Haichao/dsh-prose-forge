@@ -233,7 +233,10 @@ export function auditTypography(text, options = {}) {
         )
         const inCjkContext = !rule.cjkContext || cjkRe.test(nearby)
         const before = text.slice(Math.max(0, match.index - (rule.asciiBefore ?? 0)), match.index)
-        const inAsciiContext = !rule.asciiBefore || !cjkRe.test(before)
+        // 前面有汉字，或者有中文的开括号、开引号，都算中文语境。
+        // 只认汉字会误伤「（MIT，Copyright 2026）」这种括号里起头的英文词；
+        // 但句末标点不算信号，否则同一句里第二个错标点会被第一个压掉。
+        const inAsciiContext = !rule.asciiBefore || !/[一-龥（【「“]/.test(before)
         if (match[0].length > 0 && inCjkContext && inAsciiContext) {
           const { line, col } = locate(starts, match.index)
           const fixer = FIXES[rule.kind]
