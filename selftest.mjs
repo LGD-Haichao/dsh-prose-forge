@@ -6,6 +6,7 @@
  */
 
 import { analyze } from './analyze.js'
+import { auditTypography } from './typography.js'
 import { PARTS, lookup } from './rules.js'
 import { STYLE_PROMPT } from './prompt.js'
 
@@ -130,6 +131,23 @@ const checks = [
   ],
   ['行内代码里的套话不计入命中', analyze('不要写 `值得注意的是` 这种话。').hitCount === 0],
   ['行内代码里的标点不算排版错', analyze('调用 `foo(a,b)` 就行。').typography.total === 0],
+  [
+    '英文段落不报句长偏长',
+    !analyze(
+      'In practice the trade-off is rarely clean. Teams often pick the faster path and pay for it later, which is why the migration took three releases instead of one.',
+    ).notes.some(note => note.includes('偏长')),
+  ],
+  [
+    '中文带长英文术语不误报英中混用',
+    (auditTypography('我们使用 PostgreSQL，然后把索引重建。').counts['en-punct-cjk'] ?? 0) === 0,
+  ],
+  [
+    '中文句子里的半角逗号被抓',
+    (auditTypography('用 Postgres, 然后重建索引。').counts['halfwidth-punct-mixed'] ?? 0) === 1,
+  ],
+  ['英文逗号后面接英文不误报', auditTypography('Hello, world. Nothing here.').total === 0],
+  ['带空格的单个 — 不算破折号错', auditTypography('**标签** — 说明文字').total === 0],
+  ['紧贴文字的单个 — 仍报错', (auditTypography('段落一—段落二。').counts['dash-single'] ?? 0) === 1],
   ['排版：行尾空格被抓住', (analyze('这行有空格   \n下一行。').typography.counts['trailing-space'] ?? 0) > 0],
   [
     '排版：代码块里的半角标点不算',

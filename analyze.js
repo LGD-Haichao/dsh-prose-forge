@@ -241,6 +241,15 @@ function maskCodeFences(text) {
     cursor = newline + 1
   }
 
+  // 双反引号包住的片段要先处理：markdown 里 `` `代码` `` 靠外层双反引号转义，
+  // 只按单反引号匹配的话，内层正文会被漏掉。
+  for (const match of text.matchAll(/``[\s\S]{0,180}?``/g)) {
+    for (let i = match.index; i < match.index + match[0].length; i += 1) {
+      if (!isMasked(buf[i])) codeChars += 1
+      buf[i] = MASK
+    }
+  }
+
   // 行内代码：单个反引号包住的内容同样是代码，不该按散文规则扫。
   // 围栏行已经被上面掩成掩码，这里再掩一次不会重复计数。
   for (const match of text.matchAll(/`[^`\n]+`/g)) {
@@ -285,8 +294,9 @@ export function auditStructure(text) {
     }
   }
 
-  // 空节：标题下面没有正文
+  // 空节：标题下面没有正文。容器节不算——下一级标题比它深，说明正文在子节里。
   for (let i = 0; i < headings.length; i += 1) {
+    if (i + 1 < headings.length && headings[i + 1].level > headings[i].level) continue
     const start = headings[i].index + 1
     const end = i + 1 < headings.length ? headings[i + 1].index : lines.length
     const body = lines.slice(start, end).filter(line => line.trim() !== '' && !/^\s*(?:```|~~~)/.test(line))
@@ -295,7 +305,7 @@ export function auditStructure(text) {
     }
   }
 
-  // 单段过长：连续非空行算一段
+  // 单段过长：连续非空行算一段。列表项、表格行各自成立，不并进段落长度。
   let buffer = []
   let bufferStart = 1
   const flushParagraph = () => {
@@ -312,7 +322,12 @@ export function auditStructure(text) {
     buffer = []
   }
   lines.forEach((line, idx) => {
-    if (line.trim() === '' || /^#{1,6}[ \t]+/.test(line)) {
+    const breaksParagraph =
+      line.trim() === '' ||
+      /^#{1,6}[ \t]+/.test(line) ||
+      /^\s*(?:[-*+]|\d+[.)、])\s+/.test(line) ||
+      /^\s*\|/.test(line)
+    if (breaksParagraph) {
       flushParagraph()
       return
     }
@@ -347,25 +362,46 @@ export function auditStructure(text) {
   return { findings: findings.slice(0, 12), headingCount: headings.length }
 }
 
+/**
+ * 有效长度，单位叫"字"但不等于字符数。
+ *
+ * 汉字按 1 计；连续的拉丁字母/数字算一个词，一个词折 2。
+ * 原因是字符数不可跨语种比较：一句英文 80 个字符，信息量大约等于 35 个汉字。
+ * 不做折算的话，纯英文段落必定被判定为"句长偏长"，中英混排的密度也会系统性偏低。
+ *
+ * @param {string} text - 文本
+ * @returns {number} 折算后的长度
+ */
+function measureUnits(text) {
+  let units = 0
+  for (const char of text) {
+    if (char >= '\u4e00' && char <= '\u9fa5') units += 1
+  }
+  const latinRuns = text.match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g)
+  if (latinRuns) units += latinRuns.length * 2
+  return units
+}
+
 /** 统计指标。 */
 function computeStats(text, codeChars = 0) {
   const chars = text.replace(/\s/g, '').length
+  const units = measureUnits(text)
 
   // 句末标点切句。英文的 `.` 后面必须跟空白才算句末，否则会把 0.10.3 这种版本号切开。
   const sentences = text
     .split(/[。！？]+|[!?]+(?=\s)|\n{2,}|(?<=[.!?])\s+/)
     .map(s => s.replace(/\s/g, ''))
     .filter(s => s.length > 0)
-  const sentenceLens = sentences.map(s => s.length)
-  const avgSentenceChars = sentenceLens.length
-    ? sentenceLens.reduce((a, b) => a + b, 0) / sentenceLens.length
+  const sentenceUnits = sentences.map(measureUnits)
+  const avgSentenceUnits = sentenceUnits.length
+    ? sentenceUnits.reduce((a, b) => a + b, 0) / sentenceUnits.length
     : 0
 
   const paragraphs = text
     .split(/\n\s*\n/)
     .map(p => p.replace(/\s/g, ''))
     .filter(p => p.length > 0)
-  const paraLens = paragraphs.map(p => p.length)
+  const paraUnits = paragraphs.map(measureUnits)
 
   const lines = text.split(/\r?\n/).filter(line => line.trim() !== '')
   const listLines = lines.filter(line => /^\s*(?:[-*+]|\d+[.)、])\s+\S/.test(line)).length
@@ -381,18 +417,19 @@ function computeStats(text, codeChars = 0) {
 
   return {
     chars,
+    units,
     sentences: sentences.length,
-    avgSentenceChars: Math.round(avgSentenceChars * 10) / 10,
-    sentenceCV: Math.round(coefficientOfVariation(sentenceLens) * 100) / 100,
+    avgSentenceUnits: Math.round(avgSentenceUnits * 10) / 10,
+    sentenceCV: Math.round(coefficientOfVariation(sentenceUnits) * 100) / 100,
     paragraphs: paragraphs.length,
-    paraCV: Math.round(coefficientOfVariation(paraLens) * 100) / 100,
+    paraCV: Math.round(coefficientOfVariation(paraUnits) * 100) / 100,
     lines: lines.length,
     emDashPerK: chars > 0 ? Math.round((emDashCount / chars) * 1000 * 10) / 10 : 0,
     boldRatio: chars > 0 ? Math.round((boldChars / chars) * 1000) / 10 : 0,
     listRatio: lines.length > 0 ? Math.round((listLines / lines.length) * 1000) / 10 : 0,
     headingRatio: lines.length > 0 ? Math.round((headingLines / lines.length) * 1000) / 10 : 0,
     numberCount,
-    numberDensity: chars > 0 ? Math.round((numberCount / chars) * 1000 * 10) / 10 : 0,
+    numberDensity: units > 0 ? Math.round((numberCount / units) * 1000 * 10) / 10 : 0,
     codeRatio: chars + codeChars > 0 ? Math.round((codeChars / (chars + codeChars)) * 1000) / 10 : 0,
   }
 }
@@ -406,8 +443,8 @@ function structuralNotes(stats, mode) {
   if (stats.paragraphs >= 4 && stats.paraCV < 0.25) {
     notes.push(`各段长度过于均匀（变异系数 ${stats.paraCV}）。重要处长、次要处短，才对得上内容。`)
   }
-  if (stats.avgSentenceChars > 45) {
-    notes.push(`平均句长 ${stats.avgSentenceChars} 字，偏长。至少每三句切出一个短句。`)
+  if (stats.avgSentenceUnits > 45) {
+    notes.push(`平均句长折合 ${stats.avgSentenceUnits}（汉字算 1、英文词算 2），偏长。至少每三句切出一个短句。`)
   }
   if (stats.boldRatio > 4) {
     notes.push(`加粗占正文 ${stats.boldRatio}%，偏多。每段都有加粗，等于没有重点。`)
@@ -529,7 +566,7 @@ export function analyze(text, options = {}) {
     hits.sort((a, b) => a.index - b.index)
     const stats = computeStats(masked, codeChars)
     const weighted = hits.reduce((sum, hit) => sum + (WEIGHT[hit.severity] ?? 1), 0)
-    const score = stats.chars > 0 ? Math.round((weighted / stats.chars) * 300 * 10) / 10 : 0
+    const score = stats.units > 0 ? Math.round((weighted / stats.units) * 300 * 10) / 10 : 0
     const tier = VERDICTS.find(v => score < v.max) ?? VERDICTS[VERDICTS.length - 1]
 
     const groups = {}

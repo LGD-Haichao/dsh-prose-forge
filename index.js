@@ -142,7 +142,7 @@ function renderScan(_args, value) {
 
   lines.push(
     `判定：${value.verdictZh}（${value.verdict}，密度 ${value.score}）· ${value.chars} 字 · ` +
-      `${s.sentences} 句 · 平均句长 ${s.avgSentenceChars} 字 · 模式 ${value.mode}`,
+      `${s.sentences} 句 · 平均句长 ${s.avgSentenceUnits}（折算） · 模式 ${value.mode}`,
     `命中 ${value.hitCount} 处${value.truncated ? '（已截断）' : ''}：${groupText || '无'}`,
     `结构指标：句长变异 ${s.sentenceCV} · 段落变异 ${s.paraCV} · 破折号 ${s.emDashPerK}/千字 · ` +
       `加粗 ${s.boldRatio}% · 列表 ${s.listRatio}% · 标题 ${s.headingRatio}% · ` +

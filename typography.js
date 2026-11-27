@@ -33,6 +33,7 @@ const ASCII_MAP = {
 const FIXES = {
   // 匹配是"汉字+半角标点"，只换最后一个字符，前面的汉字要留着。
   'halfwidth-punct': m => m.slice(0, -1) + (PUNCT_MAP[m.slice(-1)] ?? ''),
+  'halfwidth-punct-mixed': m => m.slice(0, -1) + (PUNCT_MAP[m.slice(-1)] ?? ''),
   'halfwidth-period': m => m.slice(0, -1) + '。',
   ellipsis: () => '……',
   'dash-double-hyphen': () => '——',
@@ -50,6 +51,15 @@ const RULES = [
     severity: 2,
     re: new RegExp(`([${CJK}])[,;:?!]`, 'g'),
     advice: '中文句子里的逗号、分号、冒号、问号、叹号用全角。',
+  },
+  {
+    kind: 'halfwidth-punct-mixed',
+    group: '半角标点',
+    severity: 2,
+    cjkContext: true,
+    // 英文词后面跟半角逗号、但逗号后面接的是中文——说明整句是中文，该用全角。
+    re: new RegExp(`[A-Za-z][,;](?=\\s*[${CJK}])`, 'g'),
+    advice: '中文句子里的逗号、分号用全角，即使前面紧挨着英文词。',
   },
   {
     kind: 'halfwidth-period',
@@ -80,7 +90,9 @@ const RULES = [
     group: '破折号',
     severity: 1,
     cjkContext: true,
-    re: /(?<![—\d])—(?![—\d])/g,
+    // 两侧紧贴文字的单个 — 才是错写的破折号。"标签 — 说明" 这种带空格的
+    // 分隔符是从英文借来的写法，不算中文破折号错误。
+    re: /(?<![—\d\s])—(?![—\d\s])/g,
     advice: '破折号要成对：「——」。单个 — 是连接号或范围号；数字之间的年份区间不算错。',
   },
   {
@@ -130,9 +142,10 @@ const RULES = [
     kind: 'en-punct-cjk',
     group: '英中混用标点',
     severity: 2,
-    // 标点前必须是三个以上拉丁字母，且前面十个字符里不能有汉字——
-    // 这样 "我们用了 Vim。" 不算错（中文句子里的英文词），"Hello，world" 才算错。
-    asciiBefore: 10,
+    // 标点前必须是三个以上拉丁字母，且前面三十个字符里不能有汉字——
+    // 窗口给到 30 是因为中文句子常带长英文术语（"我们使用 PostgreSQL，然后"），
+    // 10 个字不够用，会被术语占满而误判成英文句子。
+    asciiBefore: 30,
     re: /(?<=[A-Za-z]{3})[，。；：！？]/g,
     advice: '前半是英文，标点却用了中文的。英文句子用英文标点。',
   },

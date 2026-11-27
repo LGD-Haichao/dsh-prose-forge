@@ -143,14 +143,32 @@ const binary = await checkTool.execute({ path: binaryPath })
 check('二进制文件被拒绝', binary.ok === false, binary.error ?? '')
 
 // ---- 结构审计（纯函数）
-const auditText = ['# 一级', '', '## 空节', '#### 跳级', '正文。', '', '| a | b |', '| - | - |', '| 1 | 2 |'].join('\n')
+const auditText = [
+  '# 一级',
+  '',
+  '## 空节',
+  '## 有内容',
+  '正文。',
+  '#### 跳级',
+  '',
+  '| a | b |',
+  '| - | - |',
+  '| 1 | 2 |',
+].join('\n')
 const audit = auditStructure(auditText)
 check('审计发现标题层级跳跃', audit.findings.some(f => f.kind === 'heading-jump'), '')
 check('审计发现空节', audit.findings.some(f => f.kind === 'empty-section'), '')
+check('容器节不算空节', !audit.findings.some(f => f.kind === 'empty-section' && f.line === 4), '')
 check('审计发现小表格', audit.findings.some(f => f.kind === 'small-table'), '')
-check('审计统计标题数', audit.headingCount === 3, String(audit.headingCount))
+check('审计统计标题数', audit.headingCount === 4, String(audit.headingCount))
 const longPara = auditStructure(`# 标题\n\n${'这是一句很长的正文。'.repeat(60)}`)
 check('审计发现超长段', longPara.findings.some(f => f.kind === 'long-paragraph'), '')
+
+const longList = ['# 标题', '', ...Array.from({ length: 10 }, (_, i) => `- 第 ${i + 1} 条：${'内容'.repeat(30)}`)].join('\n')
+check('长列表不算超长段落', !auditStructure(longList).findings.some(f => f.kind === 'long-paragraph'), '')
+
+const doubleTick = await checkTool.execute({ text: '引用 `` `值得注意的是` `` 这种写法。' })
+check('双反引号里的内容不计入命中', doubleTick.hitCount === 0, JSON.stringify(doubleTick.groups))
 
 // ---- 排版与自定义规则
 const typoResult = await checkTool.execute({ text: '第一，第二,第三。等一下...再说。' })
