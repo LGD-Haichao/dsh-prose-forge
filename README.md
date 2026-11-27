@@ -1,6 +1,6 @@
 # dsh-prose-forge（文风锻造）
 
-让 DeepSeek Harness 说人话，并且会写文件。
+让DeepSeek Harness 说人话，并且会写文件。
 
 一个插件，三面挂载：
 
@@ -10,11 +10,11 @@
 
 ## 为什么这么切
 
-文风约束只有**每轮生效**才有意义。按需触发的 skill 要用户先说“帮我润色”，规则才想起来——那时候稿子已经写完，AI 腔已经落地。所以契约常驻，长清单后置。
+文风约束只有**每轮生效**才有意义。按需触发的skill要用户先说“帮我润色”，规则才想起来——那时候稿子已经写完，AI腔已经落地。所以契约常驻，长清单后置。
 
-代价是明确的，也随时可量（`node measure.mjs`）：契约1162字 + 工具描述与 schema 656 字 + 技能目录270字 = **每轮固定2088字**。
+代价是明确的，也随时可量（`node measure.mjs`）：契约1162字 + 工具描述与schema 656 字 + 技能目录270字 = **每轮固定2088字**。
 
-做过一轮减法。量之前我以为该砍契约，结果工具占了1391字，比契约还多——两个入口各自带着完整描述和 schema。合并成 `text | path` 一个工具后降到621；这一轮加排版体检和示例库，又回到656。功能多了两样，每轮成本基本没动。
+做过一轮减法。量之前我以为该砍契约，结果工具占了1391字，比契约还多——两个入口各自带着完整描述和schema。合并成 `text | path` 一个工具后降到621；这一轮加排版体检和示例库，又回到656。功能多了两样，每轮成本基本没动。
 
 真正抓“AI 味”的不是词表，是结构。每段一样长、每句一样长、每节都有小结——这些用词表抓不到。所以扫描器除了正则，还算四个指标：句长变异系数、段落长度变异系数、加粗占比、列表行占比。判定为“有模板腔”时，先看结构问题，再看命中明细。
 
@@ -22,24 +22,24 @@
 
 ## 安装
 
-从 GitHub 装：
+从GitHub装：
 
 ```sh
 dsh plugin --profile <你的 profile> add github:LGD-Haichao/dsh-prose-forge
 ```
 
-本地开发用 link，改完重启即生效：
+本地开发用link，改完重启即生效：
 
 ```sh
 dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
 ```
 
-装完重启 DSH。注意时序差别：**装插件**时宿主会重组 profile 配置并自动挂载，新开一轮就能看到工具和技能；但**改已挂载插件的代码不会热加载**，改完必须重启，或者到插件页把开关关一次再开。
+装完重启DSH。注意时序差别：**装插件**时宿主会重组profile配置并自动挂载，新开一轮就能看到工具和技能；但**改已挂载插件的代码不会热加载**，改完必须重启，或者到插件页把开关关一次再开。
 
 > 两个环境坑，跟插件本身无关：
 >
-> - `ERR_PNPM_UNEXPECTED_STORE`——profile 的 node_modules 若来自非默认 store，要带 `--store-dir=<那个 store 的路径>`。
-> - Windows 下 CLI 传参会把中文路径转成乱码，插件目录放在纯 ASCII 路径下。
+> - `ERR_PNPM_UNEXPECTED_STORE`——profile 的node_modules若来自非默认store，要带 `--store-dir=<那个 store 的路径>`。
+> - Windows 下CLI传参会把中文路径转成乱码，插件目录放在纯ASCII路径下。
 
 ## 配置
 
@@ -48,9 +48,9 @@ dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
 | 键 | 默认 | 说明 |
 | --- | --- | --- |
 | `enabled` | `true` | 关掉整段注入、工具和技能 |
-| `order` | `100` | 提示词段排序，默认在 persona 之后 |
+| `order` | `100` | 提示词段排序，默认在persona之后 |
 | `registerTools` | `true` | 只留提示词，不注册工具 |
-| `registerSkills` | `true` | 不注册两个 skill |
+| `registerSkills` | `true` | 不注册两个skill |
 | `extraBanned` | `[]` | 追加到契约末尾的禁用表达 |
 | `customRules` | `[]` | 追加扫描规则，正则字符串，见下 |
 
@@ -83,29 +83,29 @@ dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
 
 两者都给时以 `path` 为准；都不给直接报错。
 
-编码按 BOM 判断：UTF-8、UTF-8 BOM、UTF-16LE、UTF-16BE 都能读——Windows 上「另存为 Unicode」存的是 UTF-16LE，按 UTF-8 硬读会全是乱码，还会被误判成二进制。真二进制（含 `\u0000`）直接拒绝，不瞎猜。
+编码按BOM判断：UTF-8、UTF-8 BOM、UTF-16LE、UTF-16BE都能读——Windows 上「另存为 Unicode」存的是UTF-16LE，按UTF-8硬读会全是乱码，还会被误判成二进制。真二进制（含 `\u0000`）直接拒绝，不瞎猜。
 
-`mode`：`auto`（有 markdown 标题、或两个以上中文编号标题，就判为文档）/ `chat` / `doc`。`doc` 额外查标题八股和空转表述。`limit`：最多返回多少条命中，默认40。
+`mode`：`auto`（有markdown标题、或两个以上中文编号标题，就判为文档）/ `chat` / `doc`。`doc` 额外查标题八股和空转表述。`limit`：最多返回多少条命中，默认40。
 
 判定四档：`干净` < `基本干净` < `有模板腔` < `模板腔重`。密度算法是加权严重度 ÷ 折算字数 × 300。命中不足3处时最高只判「基本干净」——短文本里一个词就能把密度顶上去，不该给整段定性。
 
-同时返回中文排版体检，和文风**分开算分**——排版错是硬伤，文风是口味，混在一起会互相淹没。18项检查：半角标点（含中文句子里夹英文词的情况）、半角括号包中文、标点前的空格、数字与汉字之间的空格、省略号写成三个点、破折号单个或两个连字符、英文引号包中文、英文句子混中文标点、重复标点、标点出现在行首、全角空格、连续空格、行尾空白、中英混排缺空格，以及引号与括号是否配对。
+同时返回中文排版体检，和文风**分开算分**——排版错是硬伤，文风是口味，混在一起会互相淹没。18项检查：半角标点（含中文句子里夹英文词的情况）、半角括号包中文、标点前的空格、汉字与英文/数字之间的空格、省略号写成三个点、破折号单个或两个连字符、英文引号包中文、英文句子混中文标点、重复标点、标点出现在行首、全角空格、连续空格、行尾空白，以及引号与括号是否配对。
 
 判定看上下文，不做语种识别：`Wait... let me check` 里的三个点不报（英文省略号合法），`用 --store-dir 装` 也不报（那是命令行参数），但 `等一下...就好`、`段落一 -- 段落二`、`Hello，world` 都会报。
 
-数字与汉字之间不加空格：`共 3 个` → `共3个`、`把 300行` → `把300行`、`跑在 5G 网络上` → `跑在5G网络上`。数字开头的标记（`5G`、`3D`、`4K`）两侧都不留。数字后面接英文词时只删前面：`共 3 files` → `共3 files`。以字母开头的标记按英文词处理，`v2.3.1 版本`、`Redis 缓存` 不动。
+汉字与英文、数字之间不留空格：`放在 Redis 里` → `放在Redis里`、`v2.3.1 版本` → `v2.3.1版本`、`共 3 个` → `共3个`、`跑在 5G 网络上` → `跑在5G网络上`。判据只有一条：英文前后不是英文，就不留空格。英文句子内部的空格照旧，`The parser is robust` 不动；英文后面接英文也照旧，`共 3 files` → `共3 files`。
 
 能机械修的直接给改法：`"一,"` → `"一，"`、`"..."` → `"……"`、`"Hello，"` → `"Hello,"`。最后这条只换标点，不补空格。
 
-扫描前先掩掉五类内容：围栏代码块、行内代码（单反引号和双反引号）、URL、二十字以内的引文，以及文件头部的 YAML frontmatter。所以 `foo(a,b)` 不会被当成排版错误，正文里引用“值得注意的是”也不会被当成套话，`[名字](https://…)（MIT，Copyright）` 里的中文逗号更不会因为判定窗口落进 URL 而误报。
+扫描前先掩掉五类内容：围栏代码块、行内代码（单反引号和双反引号）、URL、二十字以内的引文，以及文件头部的YAML frontmatter。所以 `foo(a,b)` 不会被当成排版错误，正文里引用“值得注意的是”也不会被当成套话，`[名字](https://…)（MIT，Copyright）` 里的中文逗号更不会因为判定窗口落进URL而误报。
 
-引文只掩二十字以内的：长段引用照扫——那里可能真是一段 AI 腔。掩码用不换行空格，避免把代码替换成一长串空格、反过来触发“连续空格”规则。
+引文只掩二十字以内的：长段引用照扫——那里可能真是一段AI腔。掩码用不换行空格，避免把代码替换成一长串空格、反过来触发“连续空格”规则。
 
-给 `path` 时再加四项结构审计。标题两种写法都认：markdown 的 `#`，和纯文本报告里的 `一、`（当二级）、`（一）`（当三级）：
+给 `path` 时再加四项结构审计。标题两种写法都认：markdown的 `#`，和纯文本报告里的 `一、`（当二级）、`（一）`（当三级）：
 
 | 审计项 | 抓什么 |
 | --- | --- |
-| `heading-jump` | H2 直接跳到 H4 |
+| `heading-jump` | H2 直接跳到H4 |
 | `empty-section` | 标题下面没正文 |
 | `long-paragraph` | 单段超过400字 |
 | `small-table` | 表格数据行不足2行 |
@@ -123,7 +123,7 @@ dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
 ## 自测
 
 ```powershell
-node selftest.mjs    # 扫描器：脏/净中文、英文、文档模式、掩码、排版、自定义规则，77 项断言
+node selftest.mjs    # 扫描器：脏/净中文、英文、文档模式、掩码、排版、自定义规则，79 项断言
 node harness.mjs     # 假宿主：74 项断言，验证三面挂载形状、编码、端到端调用
 node measure.mjs     # 每轮固定开销与字面重合度，改完代码用它对账
 ```
@@ -150,7 +150,7 @@ locale/{zh,en}.json
 cordis.patch.yml
 ```
 
-零运行时依赖。刻意不 import `@deepseek-ai/dsh-tools`：link 安装的包没有自己的 node_modules，裸导入宿主包会抛 `ERR_MODULE_NOT_FOUND`，而且失败是静默的。
+零运行时依赖。刻意不import `@deepseek-ai/dsh-tools`：link安装的包没有自己的node_modules，裸导入宿主包会抛 `ERR_MODULE_NOT_FOUND`，而且失败是静默的。
 
 ## 来源与致谢
 
@@ -160,7 +160,7 @@ cordis.patch.yml
 - [why3316-g/why-gzh-writer](https://github.com/why3316-g/why-gzh-writer) — skill provider 形状、交稿前自检的思路
 - [op7418/Humanizer-zh](https://github.com/op7418/Humanizer-zh) — 检查点分组思路
 - [Liam0205/skills](https://github.com/Liam0205/skills) — 写作流程结构（立意先行、分节交付、返工止损）
-- [anthropics/skills](https://github.com/anthropics/skills) — 文档产出的分工思路（格式交给 office 系列，不自己拼 OOXML）
+- [anthropics/skills](https://github.com/anthropics/skills) — 文档产出的分工思路（格式交给office系列，不自己拼OOXML）
 
 前两个项目的代码派生范围与许可全文见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 

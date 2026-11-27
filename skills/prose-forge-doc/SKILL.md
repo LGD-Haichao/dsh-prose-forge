@@ -15,7 +15,7 @@ description: 产出交付型文件时用：README、说明文档、方案、变�
 2. **给谁读** — 决定要不要解释背景知识。
 3. **多长** — 用户没说就按信息量定，不要问“需要多少字”。
 
-需要 .docx / .xlsx / .pptx / PDF 时，转交 office 系列 skill 处理格式与公式，不要自己拼 OOXML 或手写 xlsx 的 xml。本 skill 只管内容与结构。
+需要 .docx / .xlsx / .pptx / PDF 时，转交office系列skill处理格式与公式，不要自己拼OOXML或手写xlsx的xml。本skill只管内容与结构。
 
 ## 结构
 

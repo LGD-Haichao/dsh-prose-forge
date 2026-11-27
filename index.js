@@ -3,14 +3,14 @@
  *
  * 三面挂载：
  *   1. 常驻系统提示词段（order 100）：每轮生效的文风契约，写文件时自动加上文件条款
- *   2. 两个 agent 工具：prose_check（扫文本或文件，给 path 时全文不进上下文）、
+ *   2. 两个agent工具：prose_check（扫文本或文件，给path时全文不进上下文）、
  *      prose_rules（按需取规则全文）
- *   3. 一个 skill provider：prose-forge-write（写作流程）、prose-forge-doc（文件交付）
+ *   3. 一个skill provider：prose-forge-write（写作流程）、prose-forge-doc（文件交付）
  *
- * 依赖说明：工具对象在本文件里手工构造，不 import `@deepseek-ai/dsh-tools`。
- * 以 link 方式安装的包没有自己的 node_modules，裸导入宿主包会抛 ERR_MODULE_NOT_FOUND，
- * 而且是静默失败——工具不注册、插件不报错。makeTool 只做两件事：把参数规格整理成
- * JSON Schema、给 execute 包一层参数校验，两件都在下面自己做。
+ * 依赖说明：工具对象在本文件里手工构造，不import `@deepseek-ai/dsh-tools`。
+ * 以link方式安装的包没有自己的node_modules，裸导入宿主包会抛ERR_MODULE_NOT_FOUND，
+ * 而且是静默失败——工具不注册、插件不报错。makeTool只做两件事：把参数规格整理成
+ * JSON Schema、给execute包一层参数校验，两件都在下面自己做。
  */
 
 import { readFile, readdir, stat } from 'node:fs/promises'
@@ -21,7 +21,7 @@ import { STYLE_PROMPT, STYLE_SECTION_NAME, STYLE_SECTION_ORDER } from './prompt.
 import { analyze, auditStructure } from './analyze.js'
 import { PARTS, lookup } from './rules.js'
 
-/** Cordis 插件名，稳定标识。 */
+/** Cordis插件名，稳定标识。 */
 export const name = 'prose-forge'
 
 /** 挂载前需要的宿主服务。 */
@@ -38,7 +38,7 @@ const DEFAULTS = {
 
 const SKILLS_DIR = fileURLToPath(new URL('./skills/', import.meta.url))
 const PROVIDER_NAME = 'prose-forge'
-/** 数值越小越优先；用户放在 ~/.agents/skills 的同名 skill 会覆盖插件自带版本。 */
+/** 数值越小越优先；用户放在 ~/.agents/skills的同名skill会覆盖插件自带版本。 */
 const BUNDLED_SKILL_RANK = 600
 const SKILL_NAME_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
@@ -56,8 +56,8 @@ function buildPrompt(config) {
 /**
  * 把文件字节解成文本。
  *
- * Windows 上「另存为 Unicode」得到的是 UTF-16LE，直接按 utf8读全是乱码，
- * 还会因为成片的 \u0000被误判成二进制文件。按 BOM 选编码，顺手去掉 BOM。
+ * Windows上「另存为Unicode」得到的是UTF-16LE，直接按utf8读全是乱码，
+ * 还会因为成片的 \u0000被误判成二进制文件。按BOM选编码，顺手去掉BOM。
  *
  * @param {Buffer} buffer - 文件内容
  * @returns {string} 文本
@@ -82,12 +82,12 @@ function text(value) {
 }
 
 /**
- * 构造 ctx.tools.register 需要的形状。
+ * 构造ctx.tools.register需要的形状。
  *
  * @param {object} options
  * @param {string} options.name - 模型看到的工具名
  * @param {string} options.description - 干什么、什么时候用
- * @param {object} options.parameters - 参数的 JSON Schema
+ * @param {object} options.parameters - 参数的JSON Schema
  * @param {(args: object, value: unknown) => object[]} options.render - 渲染内容块
  * @param {number} [options.timeoutMs] - 单次调用预算
  * @param {(args: object) => unknown} options.execute - 实际工作
@@ -192,20 +192,20 @@ function renderRules(_args, value) {
   return text(value.markdown)
 }
 
-/** 扫描工具：给 text 扫文本，给 path 扫文件（全文不进上下文）。 */
+/** 扫描工具：给text扫文本，给path扫文件（全文不进上下文）。 */
 function scanTool(config = {}) {
   return makeTool({
     name: 'prose_check',
     description:
-      '扫描 AI 腔并自检文风。给 path 直接读盘扫文件，全文不进上下文；给 text 扫传入的文本。' +
-      '返回命中明细与结构指标，附中文排版体检（标点、空格、引号）；mode=doc 加做结构审计：' +
+      '扫描AI腔并自检文风。给path直接读盘扫文件，全文不进上下文；给text扫传入的文本。' +
+      '返回命中明细与结构指标，附中文排版体检（标点、空格、引号）；mode=doc加做结构审计：' +
       '标题层级跳跃、空节、超长段、小表格。只报线索不改写，命中不等于要改。' +
       'Triggers: 去掉AI味, 检查文风, AI腔, 审稿, 检查这个文件, 交付前自检, 排版检查.',
     parameters: {
       type: 'object',
       properties: {
         text: { type: 'string', description: '要扫描的文本' },
-        path: { type: 'string', description: '要扫描的文件路径，与 text 二选一' },
+        path: { type: 'string', description: '要扫描的文件路径，与text二选一' },
         mode: { type: 'string', enum: ['auto', 'chat', 'doc'] },
         limit: { type: 'integer' },
       },
@@ -218,7 +218,7 @@ function scanTool(config = {}) {
       const filePath = args.path ? resolve(String(args.path)) : ''
 
       if (!filePath && typeof args.text !== 'string') {
-        return { ok: false, error: '要么给 text（文本），要么给 path（文件路径）。' }
+        return { ok: false, error: '要么给text（文本），要么给path（文件路径）。' }
       }
       if (!filePath) {
         return analyze(args.text, { mode, limit, customRules: config.customRules })
@@ -255,8 +255,8 @@ function rulesTool() {
   return makeTool({
     name: 'prose_rules',
     description:
-      '取回细则全文：direct 直白十条与改写示例、doc 文件写作规范、slop AI 腔清单、' +
-      'workflow 写作流程、checkpoints 改稿检查点。不给 part 就返回全部。' +
+      '取回细则全文：direct直白十条与改写示例、doc文件写作规范、slop AI腔清单、' +
+      'workflow写作流程、checkpoints改稿检查点。不给part就返回全部。' +
       'Triggers: 文风规则, 怎么改写, 去AI味清单.',
     parameters: {
       type: 'object',
@@ -270,7 +270,7 @@ function rulesTool() {
       const part = args.part ?? 'all'
       const markdown = lookup(part)
       if (markdown === null) {
-        return { ok: false, error: `未知的 part：${part}。可用：${PARTS.join(' / ')}` }
+        return { ok: false, error: `未知的part：${part}。可用：${PARTS.join(' / ')}` }
       }
       return { ok: true, part, chars: markdown.length, markdown }
     },
@@ -285,10 +285,10 @@ export function proseTools(config = {}) {
 // ---------------------------------------------------------------- 技能
 
 /**
- * 解析 SKILL.md 顶部只含单行 `key: value` 的 frontmatter。
+ * 解析SKILL.md顶部只含单行 `key: value` 的frontmatter。
  *
- * @param {string} source - SKILL.md 全文
- * @returns {{ data: Record<string, string | boolean>, body: string } | undefined} 无 frontmatter 时返回 undefined
+ * @param {string} source - SKILL.md全文
+ * @returns {{ data: Record<string, string | boolean>, body: string } | undefined} 无frontmatter时返回undefined
  */
 export function parseSkill(source) {
   const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/.exec(source.replace(/^﻿/, ''))
@@ -330,7 +330,7 @@ async function readSkill(dirName) {
   }
 }
 
-/** skill provider：list 只读目录和 frontmatter，get 每次重读正文。 */
+/** skill provider：list只读目录和frontmatter，get每次重读正文。 */
 export const provider = {
   name: PROVIDER_NAME,
   async list() {

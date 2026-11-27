@@ -1,6 +1,6 @@
 # 第三方声明
 
-本项目的机制和代码形状派生自下列 MIT 项目；规则文本（`prompt.js`、`rules.js` 里的散文部分）为自行撰写。
+本项目的机制和代码形状派生自下列MIT项目；规则文本（`prompt.js`、`rules.js` 里的散文部分）为自行撰写。
 
 ## 一、包含派生代码
 
@@ -9,7 +9,7 @@
 - 来源：https://github.com/pseudonymzjt/dsh-direct-human-style
 - 许可：MIT
 - 派生部分：
-  - `index.js` 的 `makeTool()`——参数规格转 JSON Schema、`execute` 外层参数校验、`output: { schema, render }` 形状
+  - `index.js` 的 `makeTool()`——参数规格转JSON Schema、`execute` 外层参数校验、`output: { schema, render }` 形状
   - `apply()` 里 `ctx.effect` 包 `ctx.systemPrompt.section` 的挂载方式
   - `analyze.js` 的判定密度算法（加权严重度 ÷ 字数 × 300，四档判定）
 

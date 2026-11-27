@@ -2,10 +2,10 @@
  * analyze.js — 文风扫描器。
  *
  * 两件事：
- *   1. 正则规则：命中中文与英文的 AI 腔表达，给出位置、类别、严重度、改法
+ *   1. 正则规则：命中中文与英文的AI腔表达，给出位置、类别、严重度、改法
  *   2. 统计指标：破折号密度、加粗占比、列表行占比、句长与段落长度的变异系数
  *
- * 统计指标比正则更能抓住"结构上的 AI 味"：每段差不多长、每句差不多长，
+ * 统计指标比正则更能抓住"结构上的AI味"：每段差不多长、每句差不多长，
  * 这两件事用词表抓不到。
  *
  * 命中是线索，不是判决书。调用方应当在报告里保留这个状语。
@@ -19,7 +19,7 @@ const WEIGHT = { 3: 3, 2: 2, 1: 1 }
 /**
  * 规则表。
  * - `modes` 省略表示两种模式都跑
- * - `re` 在每次分析时重新构造，避免 global 状态的 lastIndex 污染
+ * - `re` 在每次分析时重新构造，避免global状态的lastIndex污染
  */
 const RULES = [
   {
@@ -48,7 +48,7 @@ const RULES = [
     group: '伪严谨',
     severity: 1,
     re: /在一定程度上|某种程度上|一定的可行性|可以说[，,]|相对而言|具有一定的/g,
-    advice: '要么给范围（在 X 场景下），要么删掉限定词直接下判断。',
+    advice: '要么给范围（在X场景下），要么删掉限定词直接下判断。',
   },
   {
     id: 'closing-cliche',
@@ -90,13 +90,13 @@ const RULES = [
     group: '三连排比',
     severity: 2,
     re: /既要[^。！？\n]{1,30}又要[^。！？\n]{1,30}还要|不仅[^。！？\n]{1,25}而且[^。！？\n]{1,25}还/g,
-    advice: '三连排比是 AI 的节奏习惯。改成一句直陈，或真的分成三条。',
+    advice: '三连排比是AI的节奏习惯。改成一句直陈，或真的分成三条。',
   },
   {
     id: 'firstly-secondly',
     group: '八股序列',
     severity: 2,
-    // 允许跨句：AI 常写成"首先，……。其次，……。最后，……。"，每句都独立成立。
+    // 允许跨句：AI常写成"首先，……。其次，……。最后，……。"，每句都独立成立。
     re: /首先[\s\S]{0,80}?其次[\s\S]{0,80}?(?:最后|再次)/g,
     advice: '内容真有先后顺序才用序列词，否则删掉直接并列。',
   },
@@ -152,10 +152,10 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, Math.round(value)))
 }
 
-/** 是否有文档特征：markdown 标题、中文编号标题，或编号章节。 */
+/** 是否有文档特征：markdown标题、中文编号标题，或编号章节。 */
 function looksLikeDocument(text) {
   if (/^#{1,6}[ \t]+\S/m.test(text)) return true
-  // 中文编号标题（一、二、）在纯文本报告里很常见，markdown 里一个 # 都没有。
+  // 中文编号标题（一、二、）在纯文本报告里很常见，markdown里一个 # 都没有。
   const chineseHeadings = (text.match(/^[一二三四五六七八九十百]+[、.．][ \t]*\S/gm) ?? []).length
   if (chineseHeadings >= 2 && text.length > 60) return true
   return /^\s*\d+[.、][ \t]*\S/m.test(text) && text.length > 400
@@ -202,7 +202,7 @@ function coefficientOfVariation(values) {
  * 掩码字符。
  *
  * 不用普通空格：代码被替换成一长串空格后，会自己触发"连续空格"这类规则。
- * 用不换行空格（\u00A0）——它在 JS 里算空白（\s），但不会被字面量 ` {2,}` 匹配，
+ * 用不换行空格（\u00A0）——它在JS里算空白（\s），但不会被字面量 ` {2,}` 匹配，
  * 也不会被 `[^\s]` 当成非空字符，正好隔开两侧。
  */
 const MASK = '\u00A0'
@@ -218,11 +218,11 @@ function isMasked(char) {
  * 掩掉四类：围栏代码块、行内代码（单/双反引号）、URL、短引文。
  * 用等长替换而不是删除，是为了让字符下标完全不变——行列号仍然对得上原文。
  *
- * URL 要掩：技术文档里 `[名字](https://…)` 紧跟中文标点时，
- * 判定窗口会落在 URL 里，一个汉字都没有，于是把正常的中文标点误判成英文标点。
+ * URL要掩：技术文档里 `[名字](https://…)` 紧跟中文标点时，
+ * 判定窗口会落在URL里，一个汉字都没有，于是把正常的中文标点误判成英文标点。
  *
  * 短引文也要掩：文章里引用「值得注意的是」是在讲它，不是在用它。
- * 只掩二十字以内的，长段引用照扫——长引用里可能真是一段 AI 腔。
+ * 只掩二十字以内的，长段引用照扫——长引用里可能真是一段AI腔。
  *
  * @param {string} text - 原文
  * @returns {{ masked: string, codeChars: number }} 掩码文本与代码字符数
@@ -232,7 +232,7 @@ function maskText(text) {
   let codeChars = 0
 
   /**
-   * 把一段区间涂成掩码；count 为真时计入代码字数。
+   * 把一段区间涂成掩码；count为真时计入代码字数。
    * 换行不涂——掩码一旦吃掉换行，后面所有行号都会前移，报告里的定位全错。
    */
   const paint = (from, to, count) => {
@@ -261,7 +261,7 @@ function maskText(text) {
     cursor = newline + 1
   }
 
-  // 双反引号包住的片段要先处理：markdown 里 `` `代码` `` 靠外层双反引号转义。
+  // 双反引号包住的片段要先处理：markdown里 `` `代码` `` 靠外层双反引号转义。
   for (const match of text.matchAll(/``[\s\S]{0,180}?``/g)) {
     paint(match.index, match.index + match[0].length, true)
   }
@@ -290,7 +290,7 @@ function maskText(text) {
  * 结构审计：读得出"读起来别扭"，但正则抓不到的那几件事。
  *
  * 四项：标题层级跳跃、空节、单段过长、表格太小。
- * 这些在长文档里比词层面的 AI 腔更显眼，而且作者自己读不出来——必须靠计数。
+ * 这些在长文档里比词层面的AI腔更显眼，而且作者自己读不出来——必须靠计数。
  *
  * @param {string} text - 原文
  * @returns {{ findings: object[], headingCount: number }} 发现的问题与标题数
@@ -318,7 +318,7 @@ export function auditStructure(text) {
     }
   })
 
-  // 层级跳跃：H2直接到 H4
+  // 层级跳跃：H2直接到H4
   for (let i = 1; i < headings.length; i += 1) {
     const prev = headings[i - 1]
     const cur = headings[i]
@@ -326,7 +326,7 @@ export function auditStructure(text) {
       findings.push({
         kind: 'heading-jump',
         line: cur.line,
-        detail: `H${prev.level} 直接跳到 H${cur.level}：「${cur.title}」中间少了一级`,
+        detail: `H${prev.level} 直接跳到H${cur.level}：「${cur.title}」中间少了一级`,
       })
     }
   }
@@ -414,7 +414,7 @@ function measureUnits(text) {
   for (const char of text) {
     if (char >= '\u4e00' && char <= '\u9fa5') units += 1
   }
-  // 版本号 v2.3.1、小数2024.10要算一个词，不能按点拆成三个。
+  // 版本号v2.3.1、小数2024.10要算一个词，不能按点拆成三个。
   const latinRuns = text.match(/[A-Za-z0-9]+(?:[.'’-][A-Za-z0-9]+)*/g)
   if (latinRuns) units += latinRuns.length * 2
   return units
@@ -474,7 +474,7 @@ function computeStats(text, codeChars = 0) {
   }
 }
 
-/** 结构层提示：正则抓不到，但读起来最像 AI 的那几件事。 */
+/** 结构层提示：正则抓不到，但读起来最像AI的那几件事。 */
 function structuralNotes(stats, mode) {
   const notes = []
   if (stats.sentences >= 8 && stats.sentenceCV < 0.28) {
@@ -522,7 +522,7 @@ function compileCustomRules(customRules) {
 
   customRules.forEach((raw, index) => {
     if (!raw || typeof raw.pattern !== 'string' || raw.pattern === '') {
-      invalid.push(`第 ${index + 1} 条缺 pattern`)
+      invalid.push(`第 ${index + 1} 条缺pattern`)
       return
     }
     try {
@@ -546,7 +546,7 @@ function compileCustomRules(customRules) {
  *
  * @param {string} text - 待扫描文本
  * @param {object} [options]
- * @param {'auto'|'chat'|'doc'} [options.mode] - 扫描模式，auto 按标题特征判断
+ * @param {'auto'|'chat'|'doc'} [options.mode] - 扫描模式，auto按标题特征判断
  * @param {number} [options.limit] - 最多返回多少条命中，1-200，默认40
  * @returns {object} 报告对象
  */
@@ -555,7 +555,7 @@ export function analyze(text, options = {}) {
     return { ok: false, error: '文本为空，没有可扫描的内容。' }
   }
 
-  // 去 BOM：带 BOM 的文件里，第一行的标题会被 \uFEFF 顶掉，检测不到。
+  // 去BOM：带BOM的文件里，第一行的标题会被 \uFEFF顶掉，检测不到。
   const source = text.replace(/^\uFEFF/, '')
 
   try {

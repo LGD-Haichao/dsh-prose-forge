@@ -1,10 +1,10 @@
 /**
  * typography.js — 中文排版体检。
  *
- * 和 analyze.js 分工不同：那边查"像不像 AI 写的"，这边查"合不合中文排版规范"。
+ * 和analyze.js分工不同：那边查"像不像AI写的"，这边查"合不合中文排版规范"。
  * 两者不混算分数——排版错是硬伤，文风是口味，混在一起会互相淹没。
  *
- * 全部规则是确定性的，同输入同输出，可以当 CI 门禁用。
+ * 全部规则是确定性的，同输入同输出，可以当CI门禁用。
  */
 
 /** 汉字范围，拼进正则用。 */
@@ -84,7 +84,7 @@ const RULES = [
     group: '破折号',
     severity: 1,
     cjkContext: true,
-    // 只在两侧都是空白或汉字时才算破折号，不然 --store-dir 这种命令行参数会被误判。
+    // 只在两侧都是空白或汉字时才算破折号，不然 --store-dir这种命令行参数会被误判。
     re: new RegExp(`(?<=[\\s，。、])--(?=[\\s，。、])|(?<=[${CJK}])--(?=[${CJK}])`, 'g'),
     advice: '破折号用「——」（两个），不是两个连字符。',
   },
@@ -153,7 +153,7 @@ const RULES = [
     group: '英中混用标点',
     severity: 2,
     // 标点前必须是三个以上拉丁字母，且前面三十个字符里不能有汉字——
-    // 窗口给到30是因为中文句子常带长英文术语（"我们使用 PostgreSQL，然后"），
+    // 窗口给到30是因为中文句子常带长英文术语（"我们使用PostgreSQL，然后"），
     // 10个字不够用，会被术语占满而误判成英文句子。
     asciiBefore: 30,
     re: /(?<=[A-Za-z]{3})[，。；：！？]/g,
@@ -163,16 +163,9 @@ const RULES = [
     kind: 'halfwidth-paren-cn',
     group: '括号',
     severity: 1,
-    // 括号里出现汉字才算。markdown 链接的圆括号里只有 URL，不会中。
+    // 括号里出现汉字才算。markdown链接的圆括号里只有URL，不会中。
     re: new RegExp(`\\([^()\\n]{0,60}[${CJK}][^()\\n]{0,60}\\)`, 'g'),
     advice: '中文内容用全角括号（）。',
-  },
-  {
-    kind: 'cjk-latin-gap',
-    group: '中英混排',
-    severity: 1,
-    re: new RegExp(`(?:[${CJK}][A-Za-z]|[A-Za-z][${CJK}])`, 'g'),
-    advice: '中文和英文、数字之间加一个空格，读起来不挤。这条是风格项，团队不统一可以关掉。',
   },
 ]
 
@@ -191,7 +184,7 @@ function lineStarts(text) {
 
 /**
  * 字符下标换成行列，都是1基。
- * @param {number[]} starts - lineStarts 的结果
+ * @param {number[]} starts - lineStarts的结果
  * @param {number} index - 字符下标
  * @returns {{ line: number, col: number }} 行列
  */
@@ -207,17 +200,17 @@ function locate(starts, index) {
 }
 
 /**
- * 数字两侧的空格。
+ * 汉字与拉丁标记之间的空格。
  *
- * 规则：数字和汉字之间不加空格（共3个、2024年、60秒）；
- * 但英文与汉字之间要加空格（Redis 缓存），所以数字若是英文词的一部分就保留空格——
- * `v2.3.1版本`、`5G 网络` 里那个空格是对的，不能删。
+ * 规则：只要英文（或数字）前后不是英文，就不留空格。
+ * `放在Redis里`、`v2.3.1版本`、`共3个`、`写请求超过一半`。
+ * 英文句子内部的空格照旧——`The parser is robust` 不动。
  *
  * @param {string} text - 已掩码的正文
  * @param {number[]} starts - 每行起始下标
  * @returns {object[]} 命中列表
  */
-function numberSpacingFindings(text, starts) {
+function latinSpacingFindings(text, starts) {
   const out = []
   const covered = []
   const overlaps = (from, to) => covered.some(([a, b]) => from < b && to > a)
@@ -227,37 +220,36 @@ function numberSpacingFindings(text, starts) {
     covered.push([index, index + matched.length])
     const { line, col } = locate(starts, index)
     out.push({
-      kind: 'space-around-number',
-      group: '数字空格',
+      kind: 'cjk-latin-space',
+      group: '中英混排',
       severity: 1,
       line,
       col,
       index,
       match: matched,
-      advice: '数字和汉字之间不加空格；加空格的规则只针对英文单词。',
+      advice: '汉字和英文、数字之间不留空格；英文内部、以及英文与英文之间的空格照旧。',
       fix,
     })
   }
 
-  // 数字开头的标记：5G、3D、2024、2.3.1 都算一个整体；百分号跟着数字走。
-  // 以字母开头的不算——v2.3.1 按英文词处理，两侧留空格。
-  const token = String.raw`\d+(?:[A-Za-z]+|\.[\d.]+)?(?:[ \t]*[%‰％])?`
+  // 一个拉丁标记：Redis、v2.3.1、5G、50%、config.yaml都算一个整体。
+  // 末尾允许「空格 + 百分号」，好让50 % 和前面的空格一起收掉。
+  const token = String.raw`[A-Za-z0-9](?:[A-Za-z0-9._#+%‰'’/-]*[A-Za-z0-9%‰])?(?:[ \t]*[%‰％])?`
   const compact = value => value.replace(/[ \t]+/g, '')
 
-  // 一、汉字 数字 汉字：任一侧有空格就压掉。
-  // 跑在5G网络上 / 共3个 / 把300行 都是这个形状。
+  // 一、汉字 标记 汉字：任一侧有空格就压掉。
   for (const match of text.matchAll(new RegExp(`([一-龥])([ \\t]*)(${token})([ \\t]*)([一-龥])`, 'g'))) {
     const [, left, gapBefore, core, gapAfter, right] = match
     if (gapBefore === '' && gapAfter === '') continue
     push(match.index, match[0], `${left}${compact(core)}${right}`)
   }
 
-  // 二、汉字 数字，数字后面不是汉字：共3 files。前置空格删掉，后置的留给英文。
+  // 二、汉字 空格 标记，标记后面不是汉字：共3 files。前置空格删掉，后面留给英文。
   for (const match of text.matchAll(new RegExp(`([一-龥])([ \\t]+)(${token})(?![ \\t]*[一-龥])`, 'g'))) {
     push(match.index, match[0], `${match[1]}${compact(match[3])}`)
   }
 
-  // 三、行首或标点之后的数字 + 空格 + 汉字：2024年的数据。
+  // 三、行首或标点之后的标记 + 空格 + 汉字：v2.3.1版本、2024年的数据。
   for (const match of text.matchAll(new RegExp(`(^|[，。、；：！？）】」”])[ \\t]*(${token})([ \\t]+)([一-龥])`, 'gm'))) {
     push(match.index, match[0], `${match[1]}${compact(match[2])}${match[4]}`)
   }
@@ -265,7 +257,7 @@ function numberSpacingFindings(text, starts) {
   return out
 }
 
-/** 成对的中文标点。ASCII 引号交给 ascii-quote-cn，不在这里查。 */
+/** 成对的中文标点。ASCII引号交给ascii-quote-cn，不在这里查。 */
 const BALANCE_PAIRS = [
   ['「', '」'],
   ['『', '』'],
@@ -324,7 +316,7 @@ function balanceFindings(text, starts) {
  * @param {string} text - 已掩掉代码块的正文
  * @param {object} [options]
  * @param {number} [options.limit] - 最多返回多少条，默认30
- * @param {string[]} [options.skip] - 要跳过的 kind
+ * @param {string[]} [options.skip] - 要跳过的kind
  * @returns {object} 报告
  */
 export function auditTypography(text, options = {}) {
@@ -378,7 +370,7 @@ export function auditTypography(text, options = {}) {
       }
     }
 
-    findings.push(...numberSpacingFindings(text, starts))
+    findings.push(...latinSpacingFindings(text, starts))
     findings.push(...balanceFindings(text, starts))
 
     findings.sort((a, b) => a.index - b.index)
