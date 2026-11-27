@@ -216,6 +216,10 @@ const checks = [
   ['setext 二级标题能识别', auditStructure('小节标题\n--------\n\n正文。\n').headingCount === 1],
   ['分隔线不算标题', auditStructure('正文一段。\n\n---\n\n正文二段。\n').headingCount === 0],
   [
+    'setext 计入标题占比',
+    analyze('文档标题\n========\n\n正文一段。\n', { mode: 'doc' }).stats.headingRatio > 0,
+  ],
+  [
     '代码块不算长段落',
     auditStructure('# 标题\n\n\`\`\`\n' + 'const a = 1; '.repeat(80) + '\n\`\`\`\n').findings.every(
       f => f.kind !== 'long-paragraph',

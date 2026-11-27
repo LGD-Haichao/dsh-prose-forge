@@ -525,7 +525,13 @@ function computeStats(text, codeChars = 0) {
 
   const lines = text.split(/\r?\n/).filter(line => line.trim() !== '')
   const listLines = lines.filter(line => /^\s*(?:[-*+]|\d+[.)、])\s+\S/.test(line)).length
-  const headingLines = lines.filter(line => /^#{1,6}[ \t]+\S/.test(line)).length
+  // 标题行两种写法都算：井号式，和文字下面跟一行 === / --- 的 setext 式。
+  let headingLines = lines.filter(line => /^#{1,6}[ \t]+\S/.test(line)).length
+  for (let i = 1; i < lines.length; i += 1) {
+    const underline = /^(?:=+|-{2,})[ \t]*$/.test(lines[i])
+    const prevIsText = lines[i - 1].trim() !== '' && !/^\s{0,3}(?:[-*+]|\d+[.)]|\||#)/.test(lines[i - 1])
+    if (underline && prevIsText) headingLines += 1
+  }
 
   let boldChars = 0
   for (const match of text.matchAll(/(\*\*|__)([^*_]+?)\1/g)) boldChars += match[2].length
