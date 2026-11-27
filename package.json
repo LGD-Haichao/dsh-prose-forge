@@ -40,6 +40,14 @@
   "engines": {
     "node": ">=20"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LGD-Haichao/dsh-prose-forge.git"
+  },
+  "homepage": "https://github.com/LGD-Haichao/dsh-prose-forge#readme",
+  "bugs": {
+    "url": "https://github.com/LGD-Haichao/dsh-prose-forge/issues"
+  },
   "keywords": [
     "dsh",
     "dsh-plugin",

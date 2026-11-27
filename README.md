@@ -23,7 +23,7 @@
 从 GitHub 装：
 
 ```sh
-dsh plugin --profile <你的 profile> add github:<你的 GitHub 名>/dsh-prose-forge
+dsh plugin --profile <你的 profile> add github:LGD-Haichao/dsh-prose-forge
 ```
 
 本地开发用 link，改完重启即生效：
