@@ -82,7 +82,7 @@ dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
           - cjk-latin-space
 ```
 
-可关的检查项：`halfwidth-punct`、`halfwidth-punct-mixed`、`halfwidth-period`、`ellipsis`、`dash-double-hyphen`、`dash-single`、`ascii-quote-cn`、`repeat-punct`、`punct-line-start`、`space-before-punct`、`fullwidth-space`、`double-space`、`trailing-space`、`en-punct-cjk`、`halfwidth-paren-cn`、`cjk-latin-space`、`unbalanced-mark`。
+改完立即生效，不用重启——宿主会重新读这份覆盖层。可关的检查项：`halfwidth-punct`、`halfwidth-punct-mixed`、`halfwidth-period`、`ellipsis`、`dash-double-hyphen`、`dash-single`、`ascii-quote-cn`、`repeat-punct`、`punct-line-start`、`space-before-punct`、`fullwidth-space`、`double-space`、`trailing-space`、`en-punct-cjk`、`halfwidth-paren-cn`、`cjk-latin-space`、`unbalanced-mark`。
 
 ## 工具
 
