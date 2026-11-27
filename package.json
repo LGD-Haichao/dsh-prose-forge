@@ -1,6 +1,6 @@
 {
   "name": "dsh-prose-forge",
-  "version": "0.7.7",
+  "version": "0.7.8",
   "description": "文风锻造 — DeepSeek Harness 常驻文风契约 + 扫描工具 + 写作/文件交付技能。合并 direct-human-style 的常驻机制与 Humanizer 系列的去 AI 味规则，并补上长文档写作条款。",
   "type": "module",
   "main": "index.js",

@@ -86,9 +86,15 @@ const RULES = [
     group: '破折号',
     severity: 1,
     cjkContext: true,
-    // 只在两侧都是空白或汉字时才算破折号，不然 --store-dir这种命令行参数会被误判。
-    re: new RegExp(`(?<=[\\s，。、])--(?=[\\s，。、])|(?<=[${CJK}])--(?=[${CJK}])`, 'g'),
-    advice: '破折号用「——」（两个），不是两个连字符。',
+    // 汉字或中文标点旁边的 -- 才算破折号，`--store-dir` 这种命令行参数不碰。
+    // 两侧的空格一起吃掉：中文破折号前后不留空，`段落一 -- 段落二` 要变成
+    // `段落一——段落二`，不是 `段落一 —— 段落二`。
+    // 已经写成 —— 的只在「带空格」时才报——不带空格的 `甲——乙` 本来就是对的。
+    re: new RegExp(
+      `(?<=[${CJK}，。、])(?:[ \\t]*--[ \\t]*|[ \\t]+——[ \\t]*|[ \\t]*——[ \\t]+)(?=[${CJK}，。、])`,
+      'g',
+    ),
+    advice: '破折号用「——」（两个），前后不留空格。',
   },
   {
     kind: 'dash-single',
@@ -165,6 +171,10 @@ const RULES = [
     // 窗口给到30是因为中文句子常带长英文术语（"我们使用PostgreSQL，然后"），
     // 10个字不够用，会被术语占满而误判成英文句子。
     asciiBefore: 30,
+    // 标点后面紧跟汉字，说明这句本来就是中文，用全角标点是对的。
+    // 「Redis，是一个内存数据库」不该报；报的是「restart the service。」这种
+    // 整句英文却收了个中文句号的情况。
+    asciiAfter: 12,
     re: /(?<=[A-Za-z]{3})[，。；：！？]/g,
     advice: '前半是英文，标点却用了中文的。英文句子用英文标点。',
   },
@@ -411,7 +421,13 @@ export function auditTypography(text, options = {}) {
         // 只认汉字会误伤「（MIT，Copyright 2026）」这种括号里起头的英文词；
         // 但句末标点不算信号，否则同一句里第二个错标点会被第一个压掉。
         const inAsciiContext = !rule.asciiBefore || !/[一-龥（【「“]/.test(before)
-        if (match[0].length > 0 && inCjkContext && inAsciiContext) {
+        // 标点后面接的还是汉字，说明这句是中文的，全角标点没错。
+        const after = text.slice(
+          match.index + match[0].length,
+          match.index + match[0].length + (rule.asciiAfter ?? 0),
+        )
+        const inAsciiAfter = !rule.asciiAfter || !/[一-龥]/.test(after)
+        if (match[0].length > 0 && inCjkContext && inAsciiContext && inAsciiAfter) {
           const { line, col } = locate(starts, match.index)
           const fixer = FIXES[rule.kind]
           findings.push({

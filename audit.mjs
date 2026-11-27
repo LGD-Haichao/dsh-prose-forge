@@ -27,7 +27,7 @@ const SAMPLES = {
   'fullwidth-space': '这里有\u3000全角空格。',
   'double-space': '这里有两个  空格。',
   'trailing-space': '行尾有空格   \n下一行。',
-  'en-punct-cjk': 'green。然后提交。',
+  'en-punct-cjk': 'restart the service。',
   'halfwidth-paren-cn': '(见 README)。',
   'cjk-latin-space': '放在 Redis 里。',
   'unbalanced-mark': '他说「走吧。',
