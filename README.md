@@ -71,15 +71,17 @@ dsh plugin --profile desktop add "link:/path/to/dsh-prose-forge"
 
 **装插件**时宿主会重组配置并自动挂载，新开一轮就能看到工具和技能；但**改已挂载插件的代码不会热加载**，这是宿主行为，插件自己改不了。
 
-三种手段实测结果：
+实测结果，比预想的麻烦：
 
 | 手段 | 结果 |
 | --- | --- |
-| 插件页把开关关一次再开 | 生效，模块重新加载 |
-| 改 profile 补丁里的 `disabled`，true 再 false | 生效，和插件页那个开关是同一件事 |
 | 重跑 `dsh plugin add` | **不生效**，只回一句 `Already up to date` |
+| 只翻 profile 里的 `disabled` | **时灵时不灵**，试了两次都没重载 |
+| 翻 `disabled` 且插件目录里有 js 文件变了 | **生效**，模块重新加载 |
 
-不想开界面就翻配置文件，两秒的事。文件是 `~/.dsh/profiles/<你的profile>/cordis.patch.yml`，末尾 `prose-forge` 那段：
+结论：最靠谱的是**重启 DSH**。想省事就用「改完 js 再翻开关」，但报告里的版本号一定要对一遍——不对就是没重载。
+
+翻开关要改的文件是 `~/.dsh/profiles/<你的profile>/cordis.patch.yml`，末尾 `prose-forge` 那段：
 
 ```yaml
 - id: prose-forge
