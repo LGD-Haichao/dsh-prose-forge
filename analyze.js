@@ -463,7 +463,7 @@ export function auditStructure(text) {
     const breaksParagraph =
       line.trim() === '' ||
       /^#{1,6}[ \t]+/.test(line) ||
-      /^\s*(?:[-*+]|\d+[.)、])\s+/.test(line) ||
+      /^\s*(?:(?:[-*+]|\d+[.)])\s+|\d+、\S)/.test(line) ||
       /^\s*\|/.test(line)
     if (breaksParagraph) {
       flushParagraph()
@@ -545,7 +545,11 @@ function computeStats(text, codeChars = 0) {
   const paraUnits = paragraphs.map(measureUnits)
 
   const lines = text.split(/\r?\n/).filter(line => line.trim() !== '')
-  const listLines = lines.filter(line => /^\s*(?:[-*+]|\d+[.)、])\s+\S/.test(line)).length
+  // 列表行三种写法：符号式（- * +）、西文序号（1. 1)）、中文序号（1、）。
+  // 中文序号后面通常不跟空格，所以单独一条，不能和上面共用 \s+。
+  const listLines = lines.filter(
+    line => /^\s*(?:(?:[-*+]|\d+[.)])\s+\S|\d+、\S)/.test(line),
+  ).length
   // 标题行两种写法都算：井号式，和文字下面跟一行 === / --- 的 setext 式。
   let headingLines = lines.filter(line => /^#{1,6}[ \t]+\S/.test(line)).length
   for (let i = 1; i < lines.length; i += 1) {

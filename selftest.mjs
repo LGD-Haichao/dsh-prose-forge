@@ -229,6 +229,14 @@ const checks = [
     analyze('文档标题\n========\n\n正文一段。\n', { mode: 'doc' }).stats.headingRatio > 0,
   ],
   [
+    '中文序号列表算列表行',
+    analyze('1、项一次。\n\n正文一句。\n\n正文二句。\n\n正文三句。\n', { mode: 'doc' }).stats.listRatio > 0,
+  ],
+  [
+    '正文里的顿号不算列表',
+    analyze('第1、2章讲这个。\n\n正文一句。\n\n正文二句。\n\n正文三句。\n', { mode: 'doc' }).stats.listRatio === 0,
+  ],
+  [
     '代码块不算长段落',
     auditStructure('# 标题\n\n\`\`\`\n' + 'const a = 1; '.repeat(80) + '\n\`\`\`\n').findings.every(
       f => f.kind !== 'long-paragraph',
