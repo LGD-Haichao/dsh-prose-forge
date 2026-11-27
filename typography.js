@@ -43,6 +43,7 @@ const FIXES = {
   'en-punct-cjk': m => ASCII_MAP[m] ?? m,
   'halfwidth-paren-cn': m => `（${m.slice(1, -1)}）`,
   'fullwidth-space': () => ' ',
+  'cjk-space': m => m[0],
   'invisible-char': () => '',
   'fullwidth-alnum': m =>
     m.replace(/[０-９Ａ-Ｚａ-ｚ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)),
@@ -148,6 +149,15 @@ const RULES = [
     severity: 1,
     re: /\u3000/g,
     advice: '用普通空格，不要用全角空格。',
+  },
+  {
+    // 两个汉字中间夹着一个半角空格。中文本来不靠空格分词，这种空格几乎都是
+    // 从网页、PDF、聊天记录里复制时带进来的，肉眼很难发现。
+    kind: 'cjk-space',
+    group: '空格',
+    severity: 1,
+    re: new RegExp(`([${CJK}])[ \\t]+(?=[${CJK}])`, 'g'),
+    advice: '汉字之间不该有空格。多半是复制粘贴带进来的，删掉。',
   },
   {
     // 零宽空格、零宽连接符、词连接符、BOM、双向控制符。
@@ -267,10 +277,11 @@ function latinSpacingFindings(text, starts) {
   // 结尾不许是点或连字符，否则会把句号、范围号一并吞进来。
   // 逗号、冒号、波浪号、乘方号都算词内字符：1,000、10:30、3~5、2^10 各是一个整体，
   // 不然词被截断，「1,000 个」只会清掉前面的空格，后面的留着。
-  const MID = String.raw`A-Za-z0-9._#+%‰'’/@°℃,:~～^-`
+  // 反斜杠也收：「正则 \d+ 匹配」「路径 C:\Users」都算一个词。
+  const MID = String.raw`A-Za-z0-9._#+%‰'’/@°℃,:~～^\-\\`
   const END = String.raw`A-Za-z0-9_+#%‰°℃`
-  // 允许前导正负号，「电话 +86 138…」里的 +86 才算一个词。
-  const token = String.raw`[+-]?[A-Za-z0-9](?:[${MID}]*[${END}])?(?:[ \t]*[%‰％])?`
+  // 允许前导正负号或反斜杠，「电话 +86 138…」和「正则 \d+」才算一个词。
+  const token = String.raw`[+\\-]?[A-Za-z0-9](?:[${MID}]*[${END}])?(?:[ \t]*[%‰％])?`
   const compact = value => value.replace(/[ \t]+/g, '')
 
   // 一、汉字 标记 汉字：任一侧有空格就压掉。

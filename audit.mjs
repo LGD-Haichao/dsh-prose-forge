@@ -33,6 +33,7 @@ const SAMPLES = {
   'unbalanced-mark': '他说「走吧。',
   'fullwidth-alnum': '２０２４年的数据。',
   'invisible-char': '放在\u200BRedis里。',
+  'cjk-space': '文件 在 目录里。',
 }
 
 let failed = 0
