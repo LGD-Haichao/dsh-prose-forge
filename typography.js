@@ -39,6 +39,7 @@ const FIXES = {
   'dash-double-hyphen': () => '——',
   'dash-single': () => '——',
   'repeat-punct': m => m[1],
+  'space-before-punct': m => m[1],
   'en-punct-cjk': m => ASCII_MAP[m] ?? m,
   'halfwidth-paren-cn': m => `（${m.slice(1, -1)}）`,
   'fullwidth-space': () => ' ',
@@ -117,6 +118,13 @@ const RULES = [
     severity: 1,
     re: /^[，。；：、！？]/gm,
     advice: '标点不能出现在行首，这是中文排版的硬规矩。',
+  },
+  {
+    kind: 'space-before-punct',
+    group: '标点前空格',
+    severity: 1,
+    re: /[ \t]+([，。、；：！？])/g,
+    advice: '中文标点前面不留空格，直接贴住上一个字。',
   },
   {
     kind: 'fullwidth-space',
@@ -231,28 +239,82 @@ function numberSpacingFindings(text, starts) {
     })
   }
 
-  // 数字开头的标记：5G、3D、2024、2.3.1 都算一个整体。
+  // 数字开头的标记：5G、3D、2024、2.3.1 都算一个整体；百分号跟着数字走。
   // 以字母开头的不算——v2.3.1 按英文词处理，两侧留空格。
-  const token = String.raw`\d+(?:[A-Za-z]+|\.[\d.]+)?`
+  const token = String.raw`\d+(?:[A-Za-z]+|\.[\d.]+)?(?:[ \t]*[%‰％])?`
+  const compact = value => value.replace(/[ \t]+/g, '')
 
   // 一、汉字 数字 汉字：任一侧有空格就压掉。
   // 跑在5G网络上 / 共3个 / 把300行 都是这个形状。
   for (const match of text.matchAll(new RegExp(`([一-龥])([ \\t]*)(${token})([ \\t]*)([一-龥])`, 'g'))) {
     const [, left, gapBefore, core, gapAfter, right] = match
     if (gapBefore === '' && gapAfter === '') continue
-    push(match.index, match[0], `${left}${core}${right}`)
+    push(match.index, match[0], `${left}${compact(core)}${right}`)
   }
 
   // 二、汉字 数字，数字后面不是汉字：共3 files。前置空格删掉，后置的留给英文。
   for (const match of text.matchAll(new RegExp(`([一-龥])([ \\t]+)(${token})(?![ \\t]*[一-龥])`, 'g'))) {
-    push(match.index, match[0], `${match[1]}${match[3]}`)
+    push(match.index, match[0], `${match[1]}${compact(match[3])}`)
   }
 
   // 三、行首或标点之后的数字 + 空格 + 汉字：2024年的数据。
   for (const match of text.matchAll(new RegExp(`(^|[，。、；：！？）】」”])[ \\t]*(${token})([ \\t]+)([一-龥])`, 'gm'))) {
-    push(match.index, match[0], `${match[1]}${match[2]}${match[4]}`)
+    push(match.index, match[0], `${match[1]}${compact(match[2])}${match[4]}`)
   }
 
+  return out
+}
+
+/** 成对的中文标点。ASCII 引号交给 ascii-quote-cn，不在这里查。 */
+const BALANCE_PAIRS = [
+  ['「', '」'],
+  ['『', '』'],
+  ['“', '”'],
+  ['（', '）'],
+  ['【', '】'],
+]
+
+/** 配对一个命中。 */
+function balanceHit(starts, index, detail) {
+  const { line, col } = locate(starts, index)
+  return {
+    kind: 'unbalanced-mark',
+    group: '配对',
+    severity: 2,
+    line,
+    col,
+    index,
+    match: detail,
+    advice: '引号和括号要成对。漏一个开合符号，长文档里肉眼几乎发现不了。',
+  }
+}
+
+/**
+ * 引号与括号配对检查。
+ *
+ * 同类配对用栈扫一遍：遇到开号压栈，遇到闭号弹栈；闭号时栈空说明多了一个，
+ * 扫完栈不空说明漏了闭号。位置取那个没配上的符号本身，方便直接跳过去改。
+ *
+ * @param {string} text - 已掩码的正文
+ * @param {number[]} starts - 每行起始下标
+ * @returns {object[]} 命中列表
+ */
+function balanceFindings(text, starts) {
+  const out = []
+  for (const [open, close] of BALANCE_PAIRS) {
+    const stack = []
+    for (let i = 0; i < text.length; i += 1) {
+      const char = text[i]
+      if (char === open) {
+        stack.push(i)
+        continue
+      }
+      if (char !== close) continue
+      if (stack.length > 0) stack.pop()
+      else out.push(balanceHit(starts, i, `多余的${close}`))
+    }
+    for (const index of stack) out.push(balanceHit(starts, index, `未闭合的${open}`))
+  }
   return out
 }
 
@@ -317,6 +379,7 @@ export function auditTypography(text, options = {}) {
     }
 
     findings.push(...numberSpacingFindings(text, starts))
+    findings.push(...balanceFindings(text, starts))
 
     findings.sort((a, b) => a.index - b.index)
     const counts = {}

@@ -249,6 +249,19 @@ const checks = [
       f => f.kind === 'space-around-number' && f.line === 8,
     ),
   ],
+  ['标点前空格被抓', (auditTypography('测试 ，然后继续。').counts['space-before-punct'] ?? 0) === 1],
+  [
+    '标点前空格的修法正确',
+    auditTypography('测试 ，然后继续。').findings.some(f => f.kind === 'space-before-punct' && f.fix === '，'),
+  ],
+  [
+    '百分号前空格一并压掉',
+    auditTypography('完成率 50 %，比上月高。').findings.some(f => f.fix === '率50%'),
+  ],
+  ['未闭合的引号被抓', (auditTypography('他说「走吧，明天见。').counts['unbalanced-mark'] ?? 0) === 1],
+  ['未闭合的括号被抓', (auditTypography('（未闭合的括号').counts['unbalanced-mark'] ?? 0) === 1],
+  ['多余的闭号被抓', (auditTypography('走吧」，明天见。').counts['unbalanced-mark'] ?? 0) === 1],
+  ['配对正常不误报', auditTypography('他说「走吧」，明天见（真的）。').total === 0],
   ['排版：行尾空格被抓住', (analyze('这行有空格   \n下一行。').typography.counts['trailing-space'] ?? 0) > 0],
   [
     '排版：代码块里的半角标点不算',
