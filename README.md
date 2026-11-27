@@ -12,6 +12,8 @@
 
 不知道该怎么开口，抄 [PROMPTS.md](PROMPTS.md) 里的句子就行。检查、清理、开关某条规则、安装更新，都给了现成说法，方括号里的东西换成自己的。
 
+想挂到技能市场：[LISTING.md](LISTING.md) 里有中文和英文文案、打包好的 zip、截图；[REQUIRES.md](REQUIRES.md) 是必须一起给买家的依赖声明——这东西是插件，只传 SKILL.md 装不起来。
+
 ## 为什么这么切
 
 文风约束只有**每轮生效**才有意义。按需触发的skill要用户先说“帮我润色”，规则才想起来——那时候稿子已经写完，AI腔已经落地。所以契约常驻，长清单后置。
@@ -24,26 +26,70 @@
 
 句长和密度都按**折算单位**算：汉字算1，连续的英文词算2。按字符数算的话，一句英文80个字符必然被判“偏长”，中英混排的密度也会系统性偏低——同一个毛病，中英文各挨一半。
 
-## 安装
+## 装之前
 
-从GitHub装：
+三件事齐了再动手，缺哪件都会卡在半路：
+
+- DSH 能正常启动，插件页能打开
+- Node ≥ 20（插件本身零依赖，但装的时候要用 pnpm）
+- 能访问 GitHub
+
+profile 名不确定的话，看一眼 `~/.dsh/profiles/` 下面有哪些目录。桌面版一般叫 `desktop`，网页版叫 `web`。
+
+## 装
 
 ```sh
-dsh plugin --profile <你的 profile> add github:LGD-Haichao/dsh-prose-forge
+dsh plugin --profile desktop add github:LGD-Haichao/dsh-prose-forge
 ```
 
-本地开发用link，改完重启即生效：
+开发时想让改动直接生效，用 link 指到本地目录：
 
 ```sh
-dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
+dsh plugin --profile desktop add "link:/path/to/dsh-prose-forge"
 ```
 
-装完重启DSH。注意时序差别：**装插件**时宿主会重组profile配置并自动挂载，新开一轮就能看到工具和技能；但**改已挂载插件的代码不会热加载**，改完必须重启，或者到插件页把开关关一次再开。
+## 确认装上了
 
-> 两个环境坑，跟插件本身无关：
->
-> - `ERR_PNPM_UNEXPECTED_STORE`——profile 的node_modules若来自非默认store，要带 `--store-dir=<那个 store 的路径>`。
-> - Windows 下CLI传参会把中文路径转成乱码，插件目录放在纯ASCII路径下。
+三个信号，看到两个就算成功：
+
+1. 插件页里出现「文风锻造 Prose Forge」，开关是开的
+2. 新开一个会话，输入框打 `/prose`，能列出两个 skill
+3. 随便说一句「扫一下这段：放在Redis里」，能收到带版本号的报告，末尾形如 `· v0.7.0`
+
+版本号对不上或压根没有，说明代码是新的、跑的还是旧的，见下面「改完代码怎么生效」。
+
+## 装不上怎么办
+
+| 现象 | 原因 | 处理 |
+| --- | --- | --- |
+| `ERR_PNPM_UNEXPECTED_STORE` | profile 的 node_modules 来自别的 store | 命令后面加 `--store-dir=<那个 store 的路径>` |
+| 报错里出现「鎼炵偣」这类乱码 | CLI 把中文路径按 GBK 解了 | 插件目录放到纯 ASCII 路径下 |
+| 装完工具和技能都没出现 | 没重载 | 见下一节 |
+| 命令卡住不动 | 连不上 GitHub | 换网络或配代理；这台机器实测是间歇性的 |
+
+## 改完代码怎么生效
+
+**装插件**时宿主会重组配置并自动挂载，新开一轮就能看到工具和技能；但**改已挂载插件的代码不会热加载**，这是宿主行为，插件自己改不了。
+
+三种手段实测结果：
+
+| 手段 | 结果 |
+| --- | --- |
+| 插件页把开关关一次再开 | 生效，模块重新加载 |
+| 改 profile 补丁里的 `disabled`，true 再 false | 生效，和插件页那个开关是同一件事 |
+| 重跑 `dsh plugin add` | **不生效**，只回一句 `Already up to date` |
+
+不想开界面就翻配置文件，两秒的事。文件是 `~/.dsh/profiles/<你的profile>/cordis.patch.yml`，末尾 `prose-forge` 那段：
+
+```yaml
+- id: prose-forge
+  name: dsh-prose-forge
+  config:
+    typographySkip: []
+  disabled: false      # 改成 true，等两秒，再改回 false
+```
+
+改**配置**（比如 `typographySkip`）不需要这么折腾，改完即时生效——配置层会重读，代码模块不会。
 
 ## 配置
 

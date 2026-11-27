@@ -13,6 +13,7 @@
  * JSON Schema、给execute包一层参数校验，两件都在下面自己做。
  */
 
+import { readFileSync } from 'node:fs'
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -21,6 +22,14 @@ import { STYLE_PROMPT, STYLE_SECTION_NAME, STYLE_SECTION_ORDER } from './prompt.
 import { analyze, auditStructure } from './analyze.js'
 import { fixTypography } from './typography.js'
 import { PARTS, lookup } from './rules.js'
+
+/** 当前跑的是哪一版代码。装成 link 时最容易踩「文件改了但没重载」，报告里带上它就能对账。 */
+let PLUGIN_VERSION = 'unknown'
+try {
+  PLUGIN_VERSION = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version
+} catch {
+  /* 读不到就留 unknown，不影响主流程 */
+}
 
 /** Cordis插件名，稳定标识。 */
 export const name = 'prose-forge'
@@ -174,7 +183,7 @@ function renderScan(_args, value) {
 
   lines.push(
     `判定：${value.verdictZh}（${value.verdict}，密度 ${value.score}）· ${value.chars} 字 · ` +
-      `${s.sentences} 句 · 平均句长 ${s.avgSentenceUnits}（折算） · 模式 ${value.mode}`,
+      `${s.sentences} 句 · 平均句长 ${s.avgSentenceUnits}（折算） · 模式 ${value.mode} · v${value.version ?? '?'}`,
     `命中 ${value.hitCount} 处${value.truncated ? '（已截断）' : ''}：${groupText || '无'}`,
     `结构指标：句长变异 ${s.sentenceCV} · 段落变异 ${s.paraCV} · 破折号 ${s.emDashPerK}/千字 · ` +
       `加粗 ${s.boldRatio}% · 列表 ${s.listRatio}% · 标题 ${s.headingRatio}% · ` +
@@ -254,7 +263,7 @@ function scanTool(config = {}) {
         return { ok: false, error: '要么给text（文本），要么给path（文件路径）。' }
       }
       if (!filePath) {
-        return analyze(args.text, { mode, limit, customRules: config.customRules, typographySkip: (Array.isArray(args.skip) ? args.skip : (config.typographySkip ?? [])) })
+        return { ...analyze(args.text, { mode, limit, customRules: config.customRules, typographySkip: (Array.isArray(args.skip) ? args.skip : (config.typographySkip ?? [])) }), version: PLUGIN_VERSION }
       }
 
       let info
@@ -278,7 +287,7 @@ function scanTool(config = {}) {
       const report = analyze(raw, { mode, limit, customRules: config.customRules, typographySkip: (Array.isArray(args.skip) ? args.skip : (config.typographySkip ?? [])) })
       if (report.ok === false) return report
 
-      return { ...report, path: filePath, bytes: info.size, audit: auditStructure(raw) }
+      return { ...report, path: filePath, bytes: info.size, audit: auditStructure(raw), version: PLUGIN_VERSION }
     },
   })
 }
@@ -367,6 +376,7 @@ function fixTool() {
 
       return {
         ok: true,
+        version: PLUGIN_VERSION,
         applied: result.applied,
         written,
         ...(filePath
