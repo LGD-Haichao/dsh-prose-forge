@@ -230,6 +230,8 @@ const checks = [
   ],
   ['纯英文词两侧空格也清', auditTypography('放在 Redis 里。').findings.some(f => f.fix === '在Redis里')],
   ['英文句子内部不动', auditTypography('The parser is robust.').total === 0],
+  ['符号两侧的空格也清', auditTypography('改配置 + 触发重载').findings.some(f => f.fix === '置+触')],
+  ['英文之间的加号不动', auditTypography('A + B 的组合').total === 0],
   ['型号两侧空格都清', (auditTypography('跑在 5G 网络上。').counts['cjk-latin-space'] ?? 0) === 1],
   [
     '型号的修法去掉两侧空格',

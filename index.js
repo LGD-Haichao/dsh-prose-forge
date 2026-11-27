@@ -208,6 +208,7 @@ function scanTool(config = {}) {
         text: { type: 'string', description: '要扫描的文本' },
         path: { type: 'string', description: '要扫描的文件路径，与text二选一' },
         mode: { type: 'string', enum: ['auto', 'chat', 'doc'] },
+        skip: { type: 'array', description: '本次跳过的检查项名' },
         limit: { type: 'integer' },
       },
     },
@@ -222,7 +223,7 @@ function scanTool(config = {}) {
         return { ok: false, error: '要么给text（文本），要么给path（文件路径）。' }
       }
       if (!filePath) {
-        return analyze(args.text, { mode, limit, customRules: config.customRules, typographySkip: config.typographySkip })
+        return analyze(args.text, { mode, limit, customRules: config.customRules, typographySkip: [...(config.typographySkip ?? []), ...(Array.isArray(args.skip) ? args.skip : [])] })
       }
 
       let info
@@ -243,7 +244,7 @@ function scanTool(config = {}) {
       const raw = decodeText(buffer)
       if (raw.includes('\u0000')) return { ok: false, error: `看起来是二进制文件，跳过：${filePath}` }
 
-      const report = analyze(raw, { mode, limit, customRules: config.customRules, typographySkip: config.typographySkip })
+      const report = analyze(raw, { mode, limit, customRules: config.customRules, typographySkip: [...(config.typographySkip ?? []), ...(Array.isArray(args.skip) ? args.skip : [])] })
       if (report.ok === false) return report
 
       return { ...report, path: filePath, bytes: info.size, audit: auditStructure(raw) }

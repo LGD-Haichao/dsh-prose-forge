@@ -11,7 +11,7 @@
 - 派生部分：
   - `index.js` 的 `makeTool()`——参数规格转JSON Schema、`execute` 外层参数校验、`output: { schema, render }` 形状
   - `apply()` 里 `ctx.effect` 包 `ctx.systemPrompt.section` 的挂载方式
-  - `analyze.js` 的判定密度算法（加权严重度 ÷ 字数 × 300，四档判定）
+  - `analyze.js` 的判定密度算法（加权严重度÷字数 × 300，四档判定）
 
 ### why-gzh-writer
 

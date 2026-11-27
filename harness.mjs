@@ -195,6 +195,9 @@ const spacingOff = await spacingOffTool.execute({ text: '放在 Redis 里，共 
 check('关掉后该检查不再出现', (spacingOff.typography.counts['cjk-latin-space'] ?? 0) === 0, JSON.stringify(spacingOff.typography.counts))
 check('关掉一项不影响其他项', (spacingOff.typography.counts['unbalanced-mark'] ?? 0) === 1, JSON.stringify(spacingOff.typography.counts))
 
+const skipByCall = await checkTool.execute({ text: '放在 Redis 里。', skip: ['cjk-latin-space'] })
+check('调用时也能跳过单条检查', (skipByCall.typography.counts['cjk-latin-space'] ?? 0) === 0, JSON.stringify(skipByCall.typography.counts))
+
 const badTool = proseTools({ customRules: [{ pattern: '([' }] })[0]
 const badResult = await badTool.execute({ text: '测试。' })
 check('坏正则不崩并报错', badResult.ok === true && badResult.invalidRules?.length === 1, '')

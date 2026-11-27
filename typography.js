@@ -254,6 +254,14 @@ function latinSpacingFindings(text, starts) {
     push(match.index, match[0], `${match[1]}${compact(match[2])}${match[4]}`)
   }
 
+  // 四、汉字 空格 符号 空格 汉字：改配置 + 触发重载 → 改配置+触发重载。
+  // 只认几个常见连接符号，斜杠和竖线不碰——那是路径和表格。
+  for (const match of text.matchAll(/([一-龥])([ \t]*)([+&×÷=~·])([ \t]*)([一-龥])/g)) {
+    const [, left, gapBefore, symbol, gapAfter, right] = match
+    if (gapBefore === '' && gapAfter === '') continue
+    push(match.index, match[0], `${left}${symbol}${right}`)
+  }
+
   return out
 }
 
