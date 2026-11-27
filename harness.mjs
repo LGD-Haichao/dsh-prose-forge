@@ -293,6 +293,31 @@ check('frontmatter 不被修改', front.text.includes('title: 共 3 个') && fro
 const outside = await fixToolRef.execute({ text: '说 `共 3 个` 之后，实际是 4 个文件。' })
 check('代码外的正文照修', outside.text === '说 `共 3 个` 之后，实际是4个文件。', outside.text)
 
+// ---- 混合文档里只动正文
+const mixedDoc = [
+  '---',
+  'title: 共 3 个文件',
+  '---',
+  '',
+  '# 标题 共 3 个',
+  '',
+  '正文 共 3 个文件。',
+  '',
+  '- 列表 共 3 项',
+  '',
+  '```js',
+  'const n = 共 3 个',
+  '```',
+  '',
+  '行内 `共 3 个` 示例。',
+].join('\n')
+const mixedFixed = await fixToolRef.execute({ text: mixedDoc })
+check('混合文档行数不变', mixedFixed.text.split('\n').length === mixedDoc.split('\n').length, String(mixedFixed.text.split('\n').length))
+check('混合文档保留 frontmatter', mixedFixed.text.includes('title: 共 3 个文件'), '')
+check('混合文档保留代码块', mixedFixed.text.includes('const n = 共 3 个'), '')
+check('混合文档保留行内代码', mixedFixed.text.includes('行内 `共 3 个` 示例'), '')
+check('混合文档正文已清', mixedFixed.text.includes('正文 共3个文件。') && mixedFixed.text.includes('- 列表 共3项'), mixedFixed.text)
+
 let failed = 0
 for (const { label, pass, detail } of checks) {
   if (!pass) failed += 1

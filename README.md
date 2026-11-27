@@ -222,6 +222,18 @@ node node_modules/dsh-prose-forge/selftest.mjs
 
 三个脚本都不用装依赖，直接跑：`selftest` 查扫描器，`harness` 查插件挂载形状，`audit` 查规则覆盖和文档一致性。
 
+## 受限网络下推送
+
+有些网络里 `github.com:443` 会被切断，`git push` 一直超时，但 `api.github.com` 还能通。
+仓库里带了一个脚本，走 GitHub 的 Git 数据 API 提交，效果和 push 一样：
+
+```powershell
+powershell -File scripts/push-via-api.ps1 -ApiIp <可用的 api.github.com 地址>
+```
+
+代价是服务端生成的提交号与本地不同，网络恢复后 `git fetch origin && git reset --hard origin/main` 对齐。
+细节见 [scripts/README.md](scripts/README.md)。
+
 ## 验证记录
 
 这些都是实际跑出来的，不是照着设想写的。
