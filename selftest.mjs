@@ -148,6 +148,13 @@ const checks = [
   ['英文逗号后面接英文不误报', auditTypography('Hello, world. Nothing here.').total === 0],
   ['带空格的单个 — 不算破折号错', auditTypography('**标签** — 说明文字').total === 0],
   ['紧贴文字的单个 — 仍报错', (auditTypography('段落一—段落二。').counts['dash-single'] ?? 0) === 1],
+  ['半角括号包中文被抓', (auditTypography('(见 README) 这一节。').counts['halfwidth-paren-cn'] ?? 0) === 1],
+  [
+    '半角括号的修法正确',
+    auditTypography('(见 README)').findings.some(item => item.kind === 'halfwidth-paren-cn' && item.fix === '（见 README）'),
+  ],
+  ['全角括号不误报', auditTypography('（见 README）这一节。').total === 0],
+  ['markdown 链接不误报', auditTypography('[文档](https://example.com/a) 在这里。').total === 0],
   ['排版：行尾空格被抓住', (analyze('这行有空格   \n下一行。').typography.counts['trailing-space'] ?? 0) > 0],
   [
     '排版：代码块里的半角标点不算',

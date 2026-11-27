@@ -40,6 +40,7 @@ const FIXES = {
   'dash-single': () => '——',
   'repeat-punct': m => m[1],
   'en-punct-cjk': m => ASCII_MAP[m] ?? m,
+  'halfwidth-paren-cn': m => `（${m.slice(1, -1)}）`,
   'fullwidth-space': () => ' ',
   'trailing-space': () => '',
 }
@@ -148,6 +149,14 @@ const RULES = [
     asciiBefore: 30,
     re: /(?<=[A-Za-z]{3})[，。；：！？]/g,
     advice: '前半是英文，标点却用了中文的。英文句子用英文标点。',
+  },
+  {
+    kind: 'halfwidth-paren-cn',
+    group: '括号',
+    severity: 1,
+    // 括号里出现汉字才算。markdown 链接的圆括号里只有 URL，不会中。
+    re: new RegExp(`\\([^()\\n]{0,60}[${CJK}][^()\\n]{0,60}\\)`, 'g'),
+    advice: '中文内容用全角括号（）。',
   },
   {
     kind: 'cjk-latin-gap',
