@@ -19,6 +19,16 @@ const PUNCT_MAP = {
   '!': '！',
 }
 
+/** 全角标点 → 半角，反过来用。 */
+const ASCII_MAP = {
+  '，': ',',
+  '。': '.',
+  '；': ';',
+  '：': ':',
+  '！': '!',
+  '？': '?',
+}
+
 /** 每条规则的替换建议；没有就是"要改但没法机械替换"。 */
 const FIXES = {
   // 匹配是"汉字+半角标点"，只换最后一个字符，前面的汉字要留着。
@@ -28,6 +38,7 @@ const FIXES = {
   'dash-double-hyphen': () => '——',
   'dash-single': () => '——',
   'repeat-punct': m => m[1],
+  'en-punct-cjk': m => ASCII_MAP[m] ?? m,
   'fullwidth-space': () => ' ',
   'trailing-space': () => '',
 }
@@ -51,6 +62,7 @@ const RULES = [
     kind: 'ellipsis',
     group: '省略号',
     severity: 1,
+    cjkContext: true,
     re: /\.{3,}|。{2,}/g,
     advice: '省略号是「……」（两个三连点，六个点），不是「...」也不是「。。」。',
   },
@@ -58,13 +70,16 @@ const RULES = [
     kind: 'dash-double-hyphen',
     group: '破折号',
     severity: 1,
-    re: /(?<!-)--(?!-)/g,
+    cjkContext: true,
+    // 只在两侧都是空白或汉字时才算破折号，不然 --store-dir 这种命令行参数会被误判。
+    re: new RegExp(`(?<=[\\s，。、])--(?=[\\s，。、])|(?<=[${CJK}])--(?=[${CJK}])`, 'g'),
     advice: '破折号用「——」（两个），不是两个连字符。',
   },
   {
     kind: 'dash-single',
     group: '破折号',
     severity: 1,
+    cjkContext: true,
     re: /(?<!—)—(?!—)/g,
     advice: '破折号要成对：「——」。单个 — 是连接号或范围号。',
   },
@@ -100,6 +115,7 @@ const RULES = [
     kind: 'double-space',
     group: '空格',
     severity: 1,
+    cjkContext: true,
     re: /[^\s] {2,}[^\s]/g,
     advice: '正文里连续两个以上空格，收成一个。缩进用样式控制，不靠敲空格。',
   },
@@ -109,6 +125,16 @@ const RULES = [
     severity: 1,
     re: /[ \t]+(?=\r?\n|$)/g,
     advice: '行尾空白删掉，版本对比时会变成噪音。',
+  },
+  {
+    kind: 'en-punct-cjk',
+    group: '英中混用标点',
+    severity: 2,
+    // 标点前必须是三个以上拉丁字母，且前面十个字符里不能有汉字——
+    // 这样 "我们用了 Vim。" 不算错（中文句子里的英文词），"Hello，world" 才算错。
+    asciiBefore: 10,
+    re: /(?<=[A-Za-z]{3})[，。；：！？]/g,
+    advice: '前半是英文，标点却用了中文的。英文句子用英文标点。',
   },
   {
     kind: 'cjk-latin-gap',
@@ -169,13 +195,23 @@ export function auditTypography(text, options = {}) {
     const starts = lineStarts(text)
     const findings = []
 
+    const cjkRe = new RegExp(`[${CJK}]`)
+
     for (const rule of RULES) {
       if (skip.has(rule.kind)) continue
       const re = new RegExp(rule.re.source, rule.re.flags)
       let match = re.exec(text)
       let perRule = 0
       while (match !== null && perRule < 20) {
-        if (match[0].length > 0) {
+        // 英文语境里的 ... 和单个 — 是合法用法，只在附近有汉字时才判为错误。
+        const nearby = text.slice(
+          Math.max(0, match.index - 15),
+          Math.min(text.length, match.index + match[0].length + 15),
+        )
+        const inCjkContext = !rule.cjkContext || cjkRe.test(nearby)
+        const before = text.slice(Math.max(0, match.index - (rule.asciiBefore ?? 0)), match.index)
+        const inAsciiContext = !rule.asciiBefore || !cjkRe.test(before)
+        if (match[0].length > 0 && inCjkContext && inAsciiContext) {
           const { line, col } = locate(starts, match.index)
           const fixer = FIXES[rule.kind]
           findings.push({

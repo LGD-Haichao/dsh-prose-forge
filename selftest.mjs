@@ -109,6 +109,21 @@ const checks = [
     analyze('好.然后。').typography.findings.some(item => item.kind === 'halfwidth-period' && item.fix === '好。'),
   ],
   ['排版：省略号写成三个点被抓住', (analyze('等一下...再说。').typography.counts.ellipsis ?? 0) > 0],
+  ['排版：英文省略号不误报', analyze('Wait... let me check the logs.').typography.total === 0],
+  ['排版：英文单破折号不误报', analyze('The fix — if it works — ships today.').typography.total === 0],
+  [
+    '排版：命令行参数不算破折号',
+    (analyze('用 --store-dir 参数装。').typography.counts['dash-double-hyphen'] ?? 0) === 0,
+  ],
+  [
+    '排版：中文里的 -- 仍会被抓',
+    (analyze('段落一 -- 段落二。').typography.counts['dash-double-hyphen'] ?? 0) > 0,
+  ],
+  ['排版：英文句子混中文标点被抓', (analyze('Hello，world。').typography.counts['en-punct-cjk'] ?? 0) === 2],
+  [
+    '排版：中文句子里的英文词不算错',
+    (analyze('我们用了 Vim。').typography.counts['en-punct-cjk'] ?? 0) === 0,
+  ],
   ['排版：行尾空格被抓住', (analyze('这行有空格   \n下一行。').typography.counts['trailing-space'] ?? 0) > 0],
   [
     '排版：代码块里的半角标点不算',
@@ -146,4 +161,4 @@ if (failed > 0) {
   console.log(`\n${failed} 项失败`)
   process.exit(1)
 }
-console.log('\n全部通过')
+console.log(`\n全部通过（${checks.length} 项断言）`)
