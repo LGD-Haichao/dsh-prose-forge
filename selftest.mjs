@@ -228,8 +228,16 @@ const checks = [
     '版本号后的空格保留',
     (auditTypography('升级到 v2.3.1 版本。').counts['space-around-number'] ?? 0) === 0,
   ],
-  ['型号后的空格保留', (auditTypography('跑在 5G 网络上。').counts['space-around-number'] ?? 0) === 0],
-  ['数字后接英文的空格保留', (auditTypography('共 3 files。').counts['space-around-number'] ?? 0) === 0],
+  ['型号两侧空格都清', (auditTypography('跑在 5G 网络上。').counts['space-around-number'] ?? 0) === 1],
+  [
+    '型号的修法去掉两侧空格',
+    auditTypography('跑在 5G 网络上。').findings.some(f => f.fix === '在5G网'),
+  ],
+  ['数字后接英文只删前置', (auditTypography('共 3 files。').counts['space-around-number'] ?? 0) === 1],
+  [
+    '数字后接英文的修法保留后置空格',
+    auditTypography('共 3 files。').findings.some(f => f.fix === '共3'),
+  ],
   ['单侧空格也抓', (auditTypography('把 300行拆成 3个文件。').counts['space-around-number'] ?? 0) === 2],
   [
     '单侧空格的修法正确',

@@ -231,18 +231,26 @@ function numberSpacingFindings(text, starts) {
     })
   }
 
-  // 汉字 数字 汉字：数字两侧只要有一边带空格就压掉。
-  // 共3个 / 把300行 / 共3个 三种写法都要抓——只抓两侧都有空格的会漏掉一半。
-  for (const match of text.matchAll(/([一-龥])([ \t]*)(\d+(?:\.\d+)?)([ \t]*)([一-龥])/g)) {
-    const [, left, gapBefore, digits, gapAfter, right] = match
+  // 数字开头的标记：5G、3D、2024、2.3.1 都算一个整体。
+  // 以字母开头的不算——v2.3.1 按英文词处理，两侧留空格。
+  const token = String.raw`\d+(?:[A-Za-z]+|\.[\d.]+)?`
+
+  // 一、汉字 数字 汉字：任一侧有空格就压掉。
+  // 跑在5G网络上 / 共3个 / 把300行 都是这个形状。
+  for (const match of text.matchAll(new RegExp(`([一-龥])([ \\t]*)(${token})([ \\t]*)([一-龥])`, 'g'))) {
+    const [, left, gapBefore, core, gapAfter, right] = match
     if (gapBefore === '' && gapAfter === '') continue
-    push(match.index, match[0], `${left}${digits}${right}`)
+    push(match.index, match[0], `${left}${core}${right}`)
   }
 
-  // 开头或标点之后的数字：2024年的数据 → 2024年。
-  // 数字若是英文词的一部分（v2.3.1版本、5G 网络、共3 files）这里不会命中。
-  for (const match of text.matchAll(/(^|[，。、；：！？）】」”])[ \t]*(\d+(?:\.\d+)?)[ \t]+([一-龥])/gm)) {
-    push(match.index, match[0], `${match[1]}${match[2]}${match[3]}`)
+  // 二、汉字 数字，数字后面不是汉字：共3 files。前置空格删掉，后置的留给英文。
+  for (const match of text.matchAll(new RegExp(`([一-龥])([ \\t]+)(${token})(?![ \\t]*[一-龥])`, 'g'))) {
+    push(match.index, match[0], `${match[1]}${match[3]}`)
+  }
+
+  // 三、行首或标点之后的数字 + 空格 + 汉字：2024年的数据。
+  for (const match of text.matchAll(new RegExp(`(^|[，。、；：！？）】」”])[ \\t]*(${token})([ \\t]+)([一-龥])`, 'gm'))) {
+    push(match.index, match[0], `${match[1]}${match[2]}${match[4]}`)
   }
 
   return out
