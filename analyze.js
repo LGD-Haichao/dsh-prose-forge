@@ -355,23 +355,36 @@ export function auditStructure(text) {
   const lines = text.split(/\r?\n/)
 
   const headings = []
-  lines.forEach((line, idx) => {
+  for (let idx = 0; idx < lines.length; idx += 1) {
+    const line = lines[idx]
     const markdown = /^(#{1,6})[ \t]+(\S.*)$/.exec(line)
     if (markdown) {
       headings.push({ level: markdown[1].length, title: markdown[2].trim(), line: idx + 1, index: idx })
-      return
+      continue
+    }
+    // setext 标题：文字下面跟一行 === 或 ---。等号是一级，减号是二级。
+    // 只认「上一行是正文、这一行只有下划线」的情况——前面是空行的 --- 是分隔线。
+    const next = lines[idx + 1] ?? ''
+    const isBodyLine = line.trim() !== '' && !/^\s{0,3}(?:[-*+]|\d+[.)]|\||#)/.test(line)
+    if (isBodyLine && /^=+[ \t]*$/.test(next)) {
+      headings.push({ level: 1, title: line.trim(), line: idx + 1, index: idx })
+      continue
+    }
+    if (isBodyLine && /^-{2,}[ \t]*$/.test(next)) {
+      headings.push({ level: 2, title: line.trim(), line: idx + 1, index: idx })
+      continue
     }
     // 中文编号标题：一、二、按二级算，（）里的编号按三级算。纯文本报告全靠这个撑结构。
     const numbered = /^[一二三四五六七八九十百]+[、.．][ \t]*(\S.*)$/.exec(line)
     if (numbered) {
       headings.push({ level: 2, title: numbered[1].trim(), line: idx + 1, index: idx })
-      return
+      continue
     }
     const nested = /^[（(][一二三四五六七八九十百]+[）)][ \t]*(\S.*)$/.exec(line)
     if (nested) {
       headings.push({ level: 3, title: nested[1].trim(), line: idx + 1, index: idx })
     }
-  })
+  }
 
   // 层级跳跃：H2直接到H4
   for (let i = 1; i < headings.length; i += 1) {

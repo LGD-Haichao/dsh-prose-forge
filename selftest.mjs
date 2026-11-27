@@ -212,6 +212,9 @@ const checks = [
     ).notes.some(note => note.includes('标题过密')),
   ],
   ['结构审计数出中文标题', auditStructure(NUMBERED_DOC).headingCount === 3],
+  ['setext 一级标题能识别', auditStructure('文档标题\n========\n\n正文。\n').headingCount === 1],
+  ['setext 二级标题能识别', auditStructure('小节标题\n--------\n\n正文。\n').headingCount === 1],
+  ['分隔线不算标题', auditStructure('正文一段。\n\n---\n\n正文二段。\n').headingCount === 0],
   [
     '代码块不算长段落',
     auditStructure('# 标题\n\n\`\`\`\n' + 'const a = 1; '.repeat(80) + '\n\`\`\`\n').findings.every(
