@@ -144,6 +144,7 @@ dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
 node selftest.mjs    # 扫描器：脏/净中文、英文、文档模式、掩码、排版、自定义规则，79 项断言
 node harness.mjs     # 假宿主：74 项断言，验证三面挂载形状、编码、端到端调用
 node measure.mjs     # 每轮固定开销与字面重合度，改完代码用它对账
+node audit.mjs       # 规则覆盖：每条检查都能触发、都能单独跳过，文档清单与代码一致
 ```
 
 `harness.mjs` 挡住的是“注册形状写错”这类错误——它们在真宿主里是静默的：工具不出现、插件不报错。
