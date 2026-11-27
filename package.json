@@ -1,0 +1,53 @@
+{
+  "name": "dsh-prose-forge",
+  "version": "0.1.0",
+  "description": "文风锻造 — DeepSeek Harness 常驻文风契约 + 扫描工具 + 写作/文件交付技能。合并 direct-human-style 的常驻机制与 Humanizer 系列的去 AI 味规则，并补上长文档写作条款。",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "icon": "./icon.svg",
+  "files": [
+    "index.js",
+    "prompt.js",
+    "rules.js",
+    "analyze.js",
+    "cordis.patch.yml",
+    "skills",
+    "locale",
+    "icon.svg",
+    "selftest.mjs",
+    "harness.mjs",
+    "measure.mjs",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "selftest": "node selftest.mjs",
+    "harness": "node harness.mjs",
+    "measure": "node measure.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "writing-style",
+    "humanizer",
+    "prose",
+    "document-writing"
+  ],
+  "license": "MIT"
+}

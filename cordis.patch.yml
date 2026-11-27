@@ -1,0 +1,6 @@
+# dsh-prose-forge bundle patch：往 profile 花名册里插一行。
+# 三面挂载：一段常驻系统提示词（order 100）、两个 agent 工具（prose_check / prose_rules）、
+# 一个 skill provider（prose-forge-write / prose-forge-doc）。
+- insert:
+    - id: prose-forge
+      name: 'dsh-prose-forge'
