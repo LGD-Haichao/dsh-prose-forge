@@ -377,7 +377,8 @@ function measureUnits(text) {
   for (const char of text) {
     if (char >= '\u4e00' && char <= '\u9fa5') units += 1
   }
-  const latinRuns = text.match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g)
+  // 版本号 v2.3.1、小数 2024.10 要算一个词，不能按点拆成三个。
+  const latinRuns = text.match(/[A-Za-z0-9]+(?:[.'’-][A-Za-z0-9]+)*/g)
   if (latinRuns) units += latinRuns.length * 2
   return units
 }
@@ -387,9 +388,11 @@ function computeStats(text, codeChars = 0) {
   const chars = text.replace(/\s/g, '').length
   const units = measureUnits(text)
 
-  // 句末标点切句。英文的 `.` 后面必须跟空白才算句末，否则会把 0.10.3 这种版本号切开。
+  // 句末标点切句。
+  // - 英文的 `.` 后面必须跟空白才算句末，否则会把 0.10.3 这种版本号切开。
+  // - 单个字母加点的缩写（e.g. / i.e. / U.S.）不算句末：点在词中间时前面不是词边界。
   const sentences = text
-    .split(/[。！？]+|[!?]+(?=\s)|\n{2,}|(?<=[.!?])\s+/)
+    .split(/[。！？]+|[!?]+(?=\s)|\n{2,}|(?<!\b[A-Za-z]\.)(?<=[.!?])\s+/)
     .map(s => s.replace(/\s/g, ''))
     .filter(s => s.length > 0)
   const sentenceUnits = sentences.map(measureUnits)

@@ -119,7 +119,7 @@ dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
 ## 自测
 
 ```powershell
-node selftest.mjs    # 扫描器：脏/净中文、英文、文档模式、代码掩码、排版、自定义规则，43 项断言
+node selftest.mjs    # 扫描器：脏/净中文、英文、文档模式、代码掩码、排版、自定义规则，49 项断言
 node harness.mjs     # 假宿主：72 项断言，验证三面挂载形状、编码、端到端调用
 node measure.mjs     # 每轮固定开销与字面重合度，改完代码用它对账
 ```

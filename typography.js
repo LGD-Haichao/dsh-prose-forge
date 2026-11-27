@@ -66,7 +66,8 @@ const RULES = [
     kind: 'halfwidth-period',
     group: '半角标点',
     severity: 2,
-    re: new RegExp(`[${CJK}]\\.(?=[${CJK}])`, 'g'),
+    // 句号后面跟空格再接汉字也算——中文句子写完常顺手打个空格，不该因此漏检。
+    re: new RegExp(`[${CJK}]\\.(?=\\s*[${CJK}])`, 'g'),
     advice: '句号用全角「。」。小数点、版本号里的点不算。',
   },
   {

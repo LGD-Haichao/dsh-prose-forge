@@ -155,6 +155,21 @@ const checks = [
   ],
   ['全角括号不误报', auditTypography('（见 README）这一节。').total === 0],
   ['markdown 链接不误报', auditTypography('[文档](https://example.com/a) 在这里。').total === 0],
+  ['版本号算一个词', analyze('升级到 v2.3.1 就好了。').stats.units === 8],
+  ['缩写不切句', analyze('This is fine, e.g. the config. Next one is here.').stats.sentences === 2],
+  ['正常英文照常切句', analyze('First sentence. Second one. Third.').stats.sentences === 3],
+  [
+    '中文后半角句号被抓',
+    (auditTypography('这句话结束了. 下一句开始。').counts['halfwidth-period'] ?? 0) === 1,
+  ],
+  [
+    '英文句号后接中文不误报',
+    (auditTypography('The config. 然后配置。').counts['halfwidth-period'] ?? 0) === 0,
+  ],
+  [
+    '无空格混排的半角逗号被抓',
+    (auditTypography('用 Redis,然后处理。').counts['halfwidth-punct-mixed'] ?? 0) === 1,
+  ],
   ['排版：行尾空格被抓住', (analyze('这行有空格   \n下一行。').typography.counts['trailing-space'] ?? 0) > 0],
   [
     '排版：代码块里的半角标点不算',
