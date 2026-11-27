@@ -230,6 +230,11 @@ const checks = [
   ],
   ['型号后的空格保留', (auditTypography('跑在 5G 网络上。').counts['space-around-number'] ?? 0) === 0],
   ['数字后接英文的空格保留', (auditTypography('共 3 files。').counts['space-around-number'] ?? 0) === 0],
+  ['单侧空格也抓', (auditTypography('把 300行拆成 3个文件。').counts['space-around-number'] ?? 0) === 2],
+  [
+    '单侧空格的修法正确',
+    auditTypography('把 300行拆成 3个文件。').findings.every(f => f.fix === '把300行' || f.fix === '成3个'),
+  ],
   [
     '掩码不吃换行，行号不偏移',
     analyze('# 标题\n\n```js\nvar a = 1\nvar b = 2\n```\n\n共 3 个文件。').typography.findings.some(

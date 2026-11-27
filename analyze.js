@@ -139,7 +139,7 @@ const RULES = [
   },
 ]
 
-/** 判定档位：阈值是每 300字的加权密度。 */
+/** 判定档位：阈值是每300字的加权密度。 */
 const VERDICTS = [
   { max: 2, en: 'clean', zh: '干净' },
   { max: 4, en: 'mostly clean', zh: '基本干净' },
@@ -170,7 +170,7 @@ function buildLineStarts(text) {
   return starts
 }
 
-/** 字符下标 → 行列（都是 1基）。 */
+/** 字符下标 → 行列（都是1基）。 */
 function locate(starts, index) {
   let lo = 0
   let hi = starts.length - 1
@@ -373,7 +373,7 @@ export function auditStructure(text) {
   })
   flushParagraph()
 
-  // 小表格：连续以 | 开头的行，去掉表头与分隔线后数据行不足 2
+  // 小表格：连续以 | 开头的行，去掉表头与分隔线后数据行不足2
   let tableRows = 0
   let tableStart = 1
   const flushTable = () => {
@@ -381,7 +381,7 @@ export function auditStructure(text) {
       findings.push({
         kind: 'small-table',
         line: tableStart,
-        detail: `第 ${tableStart} 行的表格只有 ${Math.max(tableRows - 2, 0)} 行数据。少于 2行改成句子。`,
+        detail: `第 ${tableStart} 行的表格只有 ${Math.max(tableRows - 2, 0)} 行数据。少于2行改成句子。`,
       })
     }
     tableRows = 0
@@ -402,8 +402,8 @@ export function auditStructure(text) {
 /**
  * 有效长度，单位叫"字"但不等于字符数。
  *
- * 汉字按 1计；连续的拉丁字母/数字算一个词，一个词折 2。
- * 原因是字符数不可跨语种比较：一句英文 80个字符，信息量大约等于 35个汉字。
+ * 汉字按1计；连续的拉丁字母/数字算一个词，一个词折2。
+ * 原因是字符数不可跨语种比较：一句英文80个字符，信息量大约等于35个汉字。
  * 不做折算的话，纯英文段落必定被判定为"句长偏长"，中英混排的密度也会系统性偏低。
  *
  * @param {string} text - 文本
@@ -414,7 +414,7 @@ function measureUnits(text) {
   for (const char of text) {
     if (char >= '\u4e00' && char <= '\u9fa5') units += 1
   }
-  // 版本号 v2.3.1、小数 2024.10要算一个词，不能按点拆成三个。
+  // 版本号 v2.3.1、小数2024.10要算一个词，不能按点拆成三个。
   const latinRuns = text.match(/[A-Za-z0-9]+(?:[.'’-][A-Za-z0-9]+)*/g)
   if (latinRuns) units += latinRuns.length * 2
   return units
@@ -426,7 +426,7 @@ function computeStats(text, codeChars = 0) {
   const units = measureUnits(text)
 
   // 句末标点切句。
-  // - 英文的 `.` 后面必须跟空白才算句末，否则会把 0.10.3这种版本号切开。
+  // - 英文的 `.` 后面必须跟空白才算句末，否则会把0.10.3这种版本号切开。
   // - 单个字母加点的缩写（e.g. / i.e. / U.S.）不算句末：点在词中间时前面不是词边界。
   const sentences = text
     .split(/[。！？]+|[!?]+(?=\s)|\n{2,}|(?<!\b[A-Za-z]\.)(?<=[.!?])\s+/)
@@ -484,7 +484,7 @@ function structuralNotes(stats, mode) {
     notes.push(`各段长度过于均匀（变异系数 ${stats.paraCV}）。重要处长、次要处短，才对得上内容。`)
   }
   if (stats.avgSentenceUnits > 55) {
-    notes.push(`平均句长折合 ${stats.avgSentenceUnits}（汉字算 1、英文词算 2），偏长。长句要承担因果和条件，光长不给落点就是拖。`)
+    notes.push(`平均句长折合 ${stats.avgSentenceUnits}（汉字算1、英文词算2），偏长。长句要承担因果和条件，光长不给落点就是拖。`)
   }
   if (stats.boldRatio > 4) {
     notes.push(`加粗占正文 ${stats.boldRatio}%，偏多。每段都有加粗，等于没有重点。`)
@@ -547,7 +547,7 @@ function compileCustomRules(customRules) {
  * @param {string} text - 待扫描文本
  * @param {object} [options]
  * @param {'auto'|'chat'|'doc'} [options.mode] - 扫描模式，auto 按标题特征判断
- * @param {number} [options.limit] - 最多返回多少条命中，1-200，默认 40
+ * @param {number} [options.limit] - 最多返回多少条命中，1-200，默认40
  * @returns {object} 报告对象
  */
 export function analyze(text, options = {}) {
@@ -607,8 +607,8 @@ export function analyze(text, options = {}) {
     const stats = computeStats(masked, codeChars)
     const weighted = hits.reduce((sum, hit) => sum + (WEIGHT[hit.severity] ?? 1), 0)
     const score = stats.units > 0 ? Math.round((weighted / stats.units) * 300 * 10) / 10 : 0
-    // 命中不足 3处时把判定压到「基本干净」为止。
-    // 密度是"每 300单位"的强度，短文本里一个词就能跨过阈值；单个命中不足以给整段定性。
+    // 命中不足3处时把判定压到「基本干净」为止。
+    // 密度是"每300单位"的强度，短文本里一个词就能跨过阈值；单个命中不足以给整段定性。
     const tierIndex = VERDICTS.findIndex(v => score < v.max)
     const safeIndex = tierIndex < 0 ? VERDICTS.length - 1 : tierIndex
     const tier = VERDICTS[hits.length < 3 ? Math.min(safeIndex, 1) : safeIndex]

@@ -145,8 +145,8 @@ const RULES = [
     group: '英中混用标点',
     severity: 2,
     // 标点前必须是三个以上拉丁字母，且前面三十个字符里不能有汉字——
-    // 窗口给到 30 是因为中文句子常带长英文术语（"我们使用 PostgreSQL，然后"），
-    // 10 个字不够用，会被术语占满而误判成英文句子。
+    // 窗口给到30是因为中文句子常带长英文术语（"我们使用 PostgreSQL，然后"），
+    // 10个字不够用，会被术语占满而误判成英文句子。
     asciiBefore: 30,
     re: /(?<=[A-Za-z]{3})[，。；：！？]/g,
     advice: '前半是英文，标点却用了中文的。英文句子用英文标点。',
@@ -182,7 +182,7 @@ function lineStarts(text) {
 }
 
 /**
- * 字符下标换成行列，都是 1 基。
+ * 字符下标换成行列，都是1基。
  * @param {number[]} starts - lineStarts 的结果
  * @param {number} index - 字符下标
  * @returns {{ line: number, col: number }} 行列
@@ -203,7 +203,7 @@ function locate(starts, index) {
  *
  * 规则：数字和汉字之间不加空格（共3个、2024年、60秒）；
  * 但英文与汉字之间要加空格（Redis 缓存），所以数字若是英文词的一部分就保留空格——
- * `v2.3.1 版本`、`5G 网络` 里那个空格是对的，不能删。
+ * `v2.3.1版本`、`5G 网络` 里那个空格是对的，不能删。
  *
  * @param {string} text - 已掩码的正文
  * @param {number[]} starts - 每行起始下标
@@ -231,13 +231,16 @@ function numberSpacingFindings(text, starts) {
     })
   }
 
-  // 汉字 数字 汉字：共 3 个 → 共3个。数字两侧都接汉字，肯定该删。
-  for (const match of text.matchAll(/([一-龥])[ \t]+(\d+(?:\.\d+)?)[ \t]+([一-龥])/g)) {
-    push(match.index, match[0], `${match[1]}${match[2]}${match[3]}`)
+  // 汉字 数字 汉字：数字两侧只要有一边带空格就压掉。
+  // 共3个 / 把300行 / 共3个 三种写法都要抓——只抓两侧都有空格的会漏掉一半。
+  for (const match of text.matchAll(/([一-龥])([ \t]*)(\d+(?:\.\d+)?)([ \t]*)([一-龥])/g)) {
+    const [, left, gapBefore, digits, gapAfter, right] = match
+    if (gapBefore === '' && gapAfter === '') continue
+    push(match.index, match[0], `${left}${digits}${right}`)
   }
 
-  // 只有一侧接汉字：数字必须在行首或标点之后，且右侧是汉字。
-  // 这样 2024 年 能抓，而 跑在 5G 网络上（数字后面是字母）、共 3 files（右侧是英文）都不动。
+  // 开头或标点之后的数字：2024年的数据 → 2024年。
+  // 数字若是英文词的一部分（v2.3.1版本、5G 网络、共3 files）这里不会命中。
   for (const match of text.matchAll(/(^|[，。、；：！？）】」”])[ \t]*(\d+(?:\.\d+)?)[ \t]+([一-龥])/gm)) {
     push(match.index, match[0], `${match[1]}${match[2]}${match[3]}`)
   }
@@ -250,7 +253,7 @@ function numberSpacingFindings(text, starts) {
  *
  * @param {string} text - 已掩掉代码块的正文
  * @param {object} [options]
- * @param {number} [options.limit] - 最多返回多少条，默认 30
+ * @param {number} [options.limit] - 最多返回多少条，默认30
  * @param {string[]} [options.skip] - 要跳过的 kind
  * @returns {object} 报告
  */

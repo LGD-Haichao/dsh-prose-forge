@@ -56,8 +56,8 @@ function buildPrompt(config) {
 /**
  * 把文件字节解成文本。
  *
- * Windows 上「另存为 Unicode」得到的是 UTF-16LE，直接按 utf8 读全是乱码，
- * 还会因为成片的 \u0000 被误判成二进制文件。按 BOM 选编码，顺手去掉 BOM。
+ * Windows 上「另存为 Unicode」得到的是 UTF-16LE，直接按 utf8读全是乱码，
+ * 还会因为成片的 \u0000被误判成二进制文件。按 BOM 选编码，顺手去掉 BOM。
  *
  * @param {Buffer} buffer - 文件内容
  * @returns {string} 文本
@@ -231,7 +231,7 @@ function scanTool(config = {}) {
         return { ok: false, error: `读不到文件：${filePath}` }
       }
       if (!info.isFile()) return { ok: false, error: `不是普通文件：${filePath}` }
-      if (info.size > 1_500_000) return { ok: false, error: `文件太大（${info.size} 字节），上限 1.5MB` }
+      if (info.size > 1_500_000) return { ok: false, error: `文件太大（${info.size} 字节），上限1.5MB` }
 
       let buffer
       try {
