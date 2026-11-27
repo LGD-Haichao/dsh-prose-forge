@@ -320,6 +320,12 @@ check('混合文档正文已清', mixedFixed.text.includes('正文 共3个文件
 check('HTML 代码标签内容不改', (await fixToolRef.execute({ text: '<code>共 3 个</code> 示例。' })).applied === 0, '')
 check('HTML 正文照改', (await fixToolRef.execute({ text: '<div>共 3 个</div>' })).text === '<div>共3个</div>', '')
 check('硬换行不被删', (await fixToolRef.execute({ text: '行一  \n行二 共 3 个。' })).text === '行一  \n行二 共3个。', '')
+check(
+  '链接里的中文路径不被改成全角',
+  (await fixToolRef.execute({ text: '见 [说明](常见问题.md) 这里。', kinds: ['halfwidth-paren-cn'] })).text ===
+    '见 [说明](常见问题.md) 这里。',
+  '',
+)
 
 let failed = 0
 for (const { label, pass, detail } of checks) {

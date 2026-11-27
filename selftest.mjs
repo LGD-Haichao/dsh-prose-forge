@@ -272,6 +272,18 @@ const checks = [
   ['行内代码旁不误报汉字空格', (auditTypography('见 `代码` 说明。').counts['cjk-space'] ?? 0) === 0],
   ['反斜杠正则算一个词', fixTypography('正则 \\d+ 匹配。', { kinds: ['cjk-latin-space'] }).text === '正则\\d+匹配。'],
   ['硬换行两个空格保留', fixTypography('行一  \n行二', { kinds: ['trailing-space'] }).text === '行一  \n行二'],
+  [
+    '链接里的中文路径不改',
+    fixTypography('[说明](常见问题.md)', { kinds: ['halfwidth-paren-cn'] }).text === '[说明](常见问题.md)',
+  ],
+  [
+    '图片里的中文路径不改',
+    fixTypography('![图](图片/架构.png)', { kinds: ['halfwidth-paren-cn'] }).text === '![图](图片/架构.png)',
+  ],
+  [
+    '普通中文括号仍然改成全角',
+    fixTypography('这是(补充说明)一句。', { kinds: ['halfwidth-paren-cn'] }).text === '这是（补充说明）一句。',
+  ],
   ['行尾一个空格仍删', fixTypography('行一 \n行二', { kinds: ['trailing-space'] }).text === '行一\n行二'],
   ['行尾三个空格仍删', fixTypography('行一   \n行二', { kinds: ['trailing-space'] }).text === '行一\n行二'],
   ['零宽空格能删', fixTypography('放在\u200BRedis里。', { kinds: ['invisible-char'] }).text === '放在Redis里。'],

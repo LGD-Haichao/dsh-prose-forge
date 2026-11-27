@@ -206,8 +206,10 @@ const RULES = [
     kind: 'halfwidth-paren-cn',
     group: '括号',
     severity: 1,
-    // 括号里出现汉字才算。markdown链接的圆括号里只有URL，不会中。
+    // 括号里出现汉字才算。markdown链接的圆括号里要是中文路径，也会中——
+    // 那种情况由 guard 挡掉，因为把 (常见问题.md) 改成（常见问题.md）会把链接毁掉。
     re: new RegExp(`\\([^()\\n]{0,60}[${CJK}][^()\\n]{0,60}\\)`, 'g'),
+    guard: (text, index) => text[index - 1] !== ']',
     advice: '中文内容用全角括号（）。',
   },
 ]
@@ -482,7 +484,17 @@ export function auditTypography(text, options = {}) {
         const inAsciiAfter = !rule.asciiAfter || !/[一-龥]/.test(after)
         // Markdown 硬换行：正好两个空格结尾是语法，不是手滑，不报也不改。
         const isHardBreak = rule.keepHardBreak === true && match[0] === '  '
-        if (match[0].length > 0 && inCjkContext && inAsciiContext && inAsciiAfter && !isHardBreak) {
+        // 位置守卫：某些命中虽然形状对，但所在位置是别的语法的一部分
+        //（比如 markdown 链接的括号），改了会毁掉原本的结构。
+        const passesGuard = !rule.guard || rule.guard(text, match.index) === true
+        if (
+          match[0].length > 0 &&
+          inCjkContext &&
+          inAsciiContext &&
+          inAsciiAfter &&
+          !isHardBreak &&
+          passesGuard
+        ) {
           const { line, col } = locate(starts, match.index)
           const fixer = FIXES[rule.kind]
           findings.push({
