@@ -265,9 +265,9 @@ function latinSpacingFindings(text, starts) {
   // 一个拉丁标记：Redis、v2.3.1、5G、50%、config.yaml都算一个整体。
   // 末尾允许「空格 + 百分号」，好让50 % 和前面的空格一起收掉。
   // 结尾不许是点或连字符，否则会把句号、范围号一并吞进来。
-  // 逗号、冒号、波浪号都算词内字符：1,000、10:30、3~5、3～5 各是一个整体，
+  // 逗号、冒号、波浪号、乘方号都算词内字符：1,000、10:30、3~5、2^10 各是一个整体，
   // 不然词被截断，「1,000 个」只会清掉前面的空格，后面的留着。
-  const MID = String.raw`A-Za-z0-9._#+%‰'’/@°℃,:~～-`
+  const MID = String.raw`A-Za-z0-9._#+%‰'’/@°℃,:~～^-`
   const END = String.raw`A-Za-z0-9_+#%‰°℃`
   // 允许前导正负号，「电话 +86 138…」里的 +86 才算一个词。
   const token = String.raw`[+-]?[A-Za-z0-9](?:[${MID}]*[${END}])?(?:[ \t]*[%‰％])?`
@@ -459,9 +459,11 @@ export function auditTypography(text, options = {}) {
         // 但句末标点不算信号，否则同一句里第二个错标点会被第一个压掉。
         const inAsciiContext = !rule.asciiBefore || !/[一-龥（【「“]/.test(before)
         // 标点后面接的还是汉字，说明这句是中文的，全角标点没错。
+        // 同样按句子截断：句号后面紧跟下一段中文时，不能拿下一段的汉字
+        // 来否定这一句——`restart the service。\n\n他说…` 里的句号该报。
         const after = text.slice(
           match.index + match[0].length,
-          match.index + match[0].length + (rule.asciiAfter ?? 0),
+          Math.min(clauseEnd, match.index + match[0].length + (rule.asciiAfter ?? 0)),
         )
         const inAsciiAfter = !rule.asciiAfter || !/[一-龥]/.test(after)
         if (match[0].length > 0 && inCjkContext && inAsciiContext && inAsciiAfter) {

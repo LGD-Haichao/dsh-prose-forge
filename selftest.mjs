@@ -274,6 +274,8 @@ const checks = [
   ['中文句里英文开头不误报', (auditTypography('Redis，是一个内存数据库。').counts['en-punct-cjk'] ?? 0) === 0],
   ['整句英文用中文标点仍报', (auditTypography('restart the service。').counts['en-punct-cjk'] ?? 0) === 1],
   ['判断英文语境不跨句', (auditTypography('中间一句。restart the service。').counts['en-punct-cjk'] ?? 0) === 1],
+  ['后向窗口也不跨句', (auditTypography('restart the service。\n\n他说下一句。').counts['en-punct-cjk'] ?? 0) === 1],
+  ['乘方算一个词', fixTypography('容量 2^10 个。', { kinds: ['cjk-latin-space'] }).text === '容量2^10个。'],
   ['省略号不跨句误报', (auditTypography('中文一句。wait... what').counts['ellipsis'] ?? 0) === 0],
   ['单破折号不跨句误报', (auditTypography('中文一句。a—b').counts['dash-single'] ?? 0) === 0],
   ['省略号在中文句里仍报', (auditTypography('他说了一句话...然后走了。').counts['ellipsis'] ?? 0) === 1],
