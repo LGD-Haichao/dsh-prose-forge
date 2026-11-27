@@ -79,6 +79,35 @@ function decodeText(buffer) {
   return buffer.toString('utf8').replace(/^\uFEFF/, '')
 }
 
+
+/** 认编码：只看 BOM，其余按 UTF-8。 */
+function sniffEncoding(buffer) {
+  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) return 'utf16le'
+  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) return 'utf16be'
+  if (buffer.length >= 3 && buffer[0] === 0xef && buffer[1] === 0xbb && buffer[2] === 0xbf) return 'utf8bom'
+  return 'utf8'
+}
+
+/** 按原编码写回，别把用户的 UTF-16 文件悄悄改成 UTF-8。 */
+function encodeText(text, encoding) {
+  if (encoding === 'utf16le') {
+    return Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')])
+  }
+  if (encoding === 'utf16be') {
+    const le = Buffer.from(text, 'utf16le')
+    const be = Buffer.alloc(le.length)
+    for (let i = 0; i + 1 < le.length; i += 2) {
+      be[i] = le[i + 1]
+      be[i + 1] = le[i]
+    }
+    return Buffer.concat([Buffer.from([0xfe, 0xff]), be])
+  }
+  if (encoding === 'utf8bom') {
+    return Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(text, 'utf8')])
+  }
+  return Buffer.from(text, 'utf8')
+}
+
 /** 一个文本内容块。 */
 function text(value) {
   return [{ type: 'text', text: value }]
@@ -313,9 +342,12 @@ function fixTool() {
       }
 
       let source = args.text
+      let encoding = 'utf8'
       if (filePath) {
         try {
-          source = decodeText(await readFile(filePath))
+          const buffer = await readFile(filePath)
+          encoding = sniffEncoding(buffer)
+          source = decodeText(buffer)
         } catch {
           return { ok: false, error: `读不到文件：${filePath}` }
         }
@@ -327,7 +359,7 @@ function fixTool() {
       const written = Boolean(filePath) && args.dryRun !== true && result.applied > 0
       if (written) {
         try {
-          await writeFile(filePath, result.text, 'utf8')
+          await writeFile(filePath, encodeText(result.text, encoding))
         } catch (error) {
           return { ok: false, error: `写入失败：${error instanceof Error ? error.message : String(error)}` }
         }
@@ -337,7 +369,9 @@ function fixTool() {
         ok: true,
         applied: result.applied,
         written,
-        ...(filePath ? { path: filePath, bytes: Buffer.byteLength(result.text, 'utf8') } : { text: result.text }),
+        ...(filePath
+          ? { path: filePath, bytes: Buffer.byteLength(result.text, 'utf8'), encoding }
+          : { text: result.text }),
       }
     },
   })

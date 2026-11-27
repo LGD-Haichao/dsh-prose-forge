@@ -8,7 +8,7 @@
  * 这类错误在真宿主里是静默的：工具不出现、插件不报错。
  */
 
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -257,6 +257,28 @@ check('prose_fix 结果正确', fixedText.text === '放在Redis里，改配置+�
 
 const dryRunResult = await fixToolRef.execute({ path: 'README.md', dryRun: true })
 check('dryRun 不写文件', dryRunResult.ok === true && dryRunResult.written === false, String(dryRunResult.written))
+
+// ---- prose_fix 写盘时保留原编码
+const encDir = await mkdtemp(join(tmpdir(), 'pf-fix-'))
+
+const fixU16Path = join(encDir, 'u16.md')
+await writeFile(fixU16Path, Buffer.from('\uFEFF放在 Redis 里。', 'utf16le'))
+const u16Fixed = await fixToolRef.execute({ path: fixU16Path })
+const u16Bytes = await readFile(fixU16Path)
+check('UTF-16 写回后还是 UTF-16', u16Bytes[0] === 0xff && u16Bytes[1] === 0xfe, [...u16Bytes.slice(0, 2)].map(b => b.toString(16)).join(' '))
+check('UTF-16 内容已清理', u16Bytes.toString('utf16le').includes('放在Redis里'), '')
+check('UTF-16 回显编码', u16Fixed.encoding === 'utf16le', String(u16Fixed.encoding))
+
+const fixBomPath = join(encDir, 'bom.md')
+await writeFile(fixBomPath, Buffer.from('\uFEFF放在 Redis 里。', 'utf8'))
+await fixToolRef.execute({ path: fixBomPath })
+const bomBytes = await readFile(fixBomPath)
+check('UTF-8 BOM 保留', bomBytes[0] === 0xef && bomBytes[1] === 0xbb && bomBytes[2] === 0xbf, [...bomBytes.slice(0, 3)].map(b => b.toString(16)).join(' '))
+
+const fixPlainPath = join(encDir, 'plain.md')
+await writeFile(fixPlainPath, '放在 Redis 里。', 'utf8')
+const plainFixed = await fixToolRef.execute({ path: fixPlainPath })
+check('UTF-8 确实写盘', plainFixed.written === true && (await readFile(fixPlainPath, 'utf8')) === '放在Redis里。', '')
 
 let failed = 0
 for (const { label, pass, detail } of checks) {
