@@ -13,7 +13,7 @@
 
 import { auditTypography } from './typography.js'
 
-/** 严重度权重：3 重 / 2 中 / 1 轻。 */
+/** 严重度权重：3重 / 2中 / 1轻。 */
 const WEIGHT = { 3: 3, 2: 2, 1: 1 }
 
 /**
@@ -139,7 +139,7 @@ const RULES = [
   },
 ]
 
-/** 判定档位：阈值是每 300 字的加权密度。 */
+/** 判定档位：阈值是每 300字的加权密度。 */
 const VERDICTS = [
   { max: 2, en: 'clean', zh: '干净' },
   { max: 4, en: 'mostly clean', zh: '基本干净' },
@@ -170,7 +170,7 @@ function buildLineStarts(text) {
   return starts
 }
 
-/** 字符下标 → 行列（都是 1 基）。 */
+/** 字符下标 → 行列（都是 1基）。 */
 function locate(starts, index) {
   let lo = 0
   let hi = starts.length - 1
@@ -231,9 +231,13 @@ function maskText(text) {
   const buf = text.split('')
   let codeChars = 0
 
-  /** 把一段区间涂成掩码；count 为真时计入代码字数。 */
+  /**
+   * 把一段区间涂成掩码；count 为真时计入代码字数。
+   * 换行不涂——掩码一旦吃掉换行，后面所有行号都会前移，报告里的定位全错。
+   */
   const paint = (from, to, count) => {
     for (let i = from; i < to; i += 1) {
+      if (buf[i] === '\n') continue
       if (!isMasked(buf[i]) && count) codeChars += 1
       buf[i] = MASK
     }
@@ -314,7 +318,7 @@ export function auditStructure(text) {
     }
   })
 
-  // 层级跳跃：H2 直接到 H4
+  // 层级跳跃：H2直接到 H4
   for (let i = 1; i < headings.length; i += 1) {
     const prev = headings[i - 1]
     const cur = headings[i]
@@ -377,7 +381,7 @@ export function auditStructure(text) {
       findings.push({
         kind: 'small-table',
         line: tableStart,
-        detail: `第 ${tableStart} 行的表格只有 ${Math.max(tableRows - 2, 0)} 行数据。少于 2 行改成句子。`,
+        detail: `第 ${tableStart} 行的表格只有 ${Math.max(tableRows - 2, 0)} 行数据。少于 2行改成句子。`,
       })
     }
     tableRows = 0
@@ -398,8 +402,8 @@ export function auditStructure(text) {
 /**
  * 有效长度，单位叫"字"但不等于字符数。
  *
- * 汉字按 1 计；连续的拉丁字母/数字算一个词，一个词折 2。
- * 原因是字符数不可跨语种比较：一句英文 80 个字符，信息量大约等于 35 个汉字。
+ * 汉字按 1计；连续的拉丁字母/数字算一个词，一个词折 2。
+ * 原因是字符数不可跨语种比较：一句英文 80个字符，信息量大约等于 35个汉字。
  * 不做折算的话，纯英文段落必定被判定为"句长偏长"，中英混排的密度也会系统性偏低。
  *
  * @param {string} text - 文本
@@ -410,7 +414,7 @@ function measureUnits(text) {
   for (const char of text) {
     if (char >= '\u4e00' && char <= '\u9fa5') units += 1
   }
-  // 版本号 v2.3.1、小数 2024.10 要算一个词，不能按点拆成三个。
+  // 版本号 v2.3.1、小数 2024.10要算一个词，不能按点拆成三个。
   const latinRuns = text.match(/[A-Za-z0-9]+(?:[.'’-][A-Za-z0-9]+)*/g)
   if (latinRuns) units += latinRuns.length * 2
   return units
@@ -422,7 +426,7 @@ function computeStats(text, codeChars = 0) {
   const units = measureUnits(text)
 
   // 句末标点切句。
-  // - 英文的 `.` 后面必须跟空白才算句末，否则会把 0.10.3 这种版本号切开。
+  // - 英文的 `.` 后面必须跟空白才算句末，否则会把 0.10.3这种版本号切开。
   // - 单个字母加点的缩写（e.g. / i.e. / U.S.）不算句末：点在词中间时前面不是词边界。
   const sentences = text
     .split(/[。！？]+|[!?]+(?=\s)|\n{2,}|(?<!\b[A-Za-z]\.)(?<=[.!?])\s+/)
@@ -603,8 +607,8 @@ export function analyze(text, options = {}) {
     const stats = computeStats(masked, codeChars)
     const weighted = hits.reduce((sum, hit) => sum + (WEIGHT[hit.severity] ?? 1), 0)
     const score = stats.units > 0 ? Math.round((weighted / stats.units) * 300 * 10) / 10 : 0
-    // 命中不足 3 处时把判定压到「基本干净」为止。
-    // 密度是"每 300 单位"的强度，短文本里一个词就能跨过阈值；单个命中不足以给整段定性。
+    // 命中不足 3处时把判定压到「基本干净」为止。
+    // 密度是"每 300单位"的强度，短文本里一个词就能跨过阈值；单个命中不足以给整段定性。
     const tierIndex = VERDICTS.findIndex(v => score < v.max)
     const safeIndex = tierIndex < 0 ? VERDICTS.length - 1 : tierIndex
     const tier = VERDICTS[hits.length < 3 ? Math.min(safeIndex, 1) : safeIndex]

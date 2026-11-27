@@ -199,6 +199,53 @@ function locate(starts, index) {
 }
 
 /**
+ * 数字两侧的空格。
+ *
+ * 规则：数字和汉字之间不加空格（共3个、2024年、60秒）；
+ * 但英文与汉字之间要加空格（Redis 缓存），所以数字若是英文词的一部分就保留空格——
+ * `v2.3.1 版本`、`5G 网络` 里那个空格是对的，不能删。
+ *
+ * @param {string} text - 已掩码的正文
+ * @param {number[]} starts - 每行起始下标
+ * @returns {object[]} 命中列表
+ */
+function numberSpacingFindings(text, starts) {
+  const out = []
+  const covered = []
+  const overlaps = (from, to) => covered.some(([a, b]) => from < b && to > a)
+
+  const push = (index, matched, fix) => {
+    if (overlaps(index, index + matched.length)) return
+    covered.push([index, index + matched.length])
+    const { line, col } = locate(starts, index)
+    out.push({
+      kind: 'space-around-number',
+      group: '数字空格',
+      severity: 1,
+      line,
+      col,
+      index,
+      match: matched,
+      advice: '数字和汉字之间不加空格；加空格的规则只针对英文单词。',
+      fix,
+    })
+  }
+
+  // 汉字 数字 汉字：共 3 个 → 共3个。数字两侧都接汉字，肯定该删。
+  for (const match of text.matchAll(/([一-龥])[ \t]+(\d+(?:\.\d+)?)[ \t]+([一-龥])/g)) {
+    push(match.index, match[0], `${match[1]}${match[2]}${match[3]}`)
+  }
+
+  // 只有一侧接汉字：数字必须在行首或标点之后，且右侧是汉字。
+  // 这样 2024 年 能抓，而 跑在 5G 网络上（数字后面是字母）、共 3 files（右侧是英文）都不动。
+  for (const match of text.matchAll(/(^|[，。、；：！？）】」”])[ \t]*(\d+(?:\.\d+)?)[ \t]+([一-龥])/gm)) {
+    push(match.index, match[0], `${match[1]}${match[2]}${match[3]}`)
+  }
+
+  return out
+}
+
+/**
  * 排版体检。
  *
  * @param {string} text - 已掩掉代码块的正文
@@ -257,6 +304,8 @@ export function auditTypography(text, options = {}) {
         match = re.exec(text)
       }
     }
+
+    findings.push(...numberSpacingFindings(text, starts))
 
     findings.sort((a, b) => a.index - b.index)
     const counts = {}

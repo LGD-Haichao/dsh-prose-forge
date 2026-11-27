@@ -218,6 +218,24 @@ const checks = [
     '长引文照常扫描',
     (analyze(`引文：“值得注意的是${'还有很长的一段内容'.repeat(6)}”结束。`).hitCount ?? 0) > 0,
   ],
+  ['数字与汉字之间的空格被抓', (auditTypography('共 3 个文件。').counts['space-around-number'] ?? 0) === 1],
+  ['行首数字后接汉字被抓', (auditTypography('2024 年的数据。').counts['space-around-number'] ?? 0) === 1],
+  [
+    '数字空格的修法正确',
+    auditTypography('共 3 个文件。').findings.some(f => f.kind === 'space-around-number' && f.fix === '共3个'),
+  ],
+  [
+    '版本号后的空格保留',
+    (auditTypography('升级到 v2.3.1 版本。').counts['space-around-number'] ?? 0) === 0,
+  ],
+  ['型号后的空格保留', (auditTypography('跑在 5G 网络上。').counts['space-around-number'] ?? 0) === 0],
+  ['数字后接英文的空格保留', (auditTypography('共 3 files。').counts['space-around-number'] ?? 0) === 0],
+  [
+    '掩码不吃换行，行号不偏移',
+    analyze('# 标题\n\n```js\nvar a = 1\nvar b = 2\n```\n\n共 3 个文件。').typography.findings.some(
+      f => f.kind === 'space-around-number' && f.line === 8,
+    ),
+  ],
   ['排版：行尾空格被抓住', (analyze('这行有空格   \n下一行。').typography.counts['trailing-space'] ?? 0) > 0],
   [
     '排版：代码块里的半角标点不算',
