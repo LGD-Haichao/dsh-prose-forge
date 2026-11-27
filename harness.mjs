@@ -61,6 +61,8 @@ check('段名是 prose', section.name === 'prose', String(section.name))
 check('顺序是 100', section.order === 100, String(section.order))
 check('正文非空且等于契约', section.text === STYLE_PROMPT, `${section.text?.length ?? 0} 字`)
 check('契约含文件条款', section.text.includes('结构服从内容'), '')
+check('契约含完整句条款', section.text.includes('句子写完整'), '')
+check('契约含实限定条款', section.text.includes('限定要实'), '')
 check('契约不含未替换占位符', !/\{\{|\}\}/.test(section.text), '')
 
 // ---- 工具

@@ -462,8 +462,8 @@ function structuralNotes(stats, mode) {
   if (stats.paragraphs >= 4 && stats.paraCV < 0.25) {
     notes.push(`各段长度过于均匀（变异系数 ${stats.paraCV}）。重要处长、次要处短，才对得上内容。`)
   }
-  if (stats.avgSentenceUnits > 45) {
-    notes.push(`平均句长折合 ${stats.avgSentenceUnits}（汉字算 1、英文词算 2），偏长。至少每三句切出一个短句。`)
+  if (stats.avgSentenceUnits > 55) {
+    notes.push(`平均句长折合 ${stats.avgSentenceUnits}（汉字算 1、英文词算 2），偏长。长句要承担因果和条件，光长不给落点就是拖。`)
   }
   if (stats.boldRatio > 4) {
     notes.push(`加粗占正文 ${stats.boldRatio}%，偏多。每段都有加粗，等于没有重点。`)
