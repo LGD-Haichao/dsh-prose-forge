@@ -199,6 +199,10 @@ const RULES = [
     // 「Redis，是一个内存数据库」不该报；报的是「restart the service。」这种
     // 整句英文却收了个中文句号的情况。
     asciiAfter: 12,
+    // 整句至少要有这么多个英文词才算「一句英文」。`MIT。`、`OK。` 这种
+    // 一个词缩写单独成句的中文条目不算——它们用中文句号是对的；
+    // `Hello，world。` 两个词，才算英文句子写错了标点。
+    minLatinWords: 2,
     re: /(?<=[A-Za-z]{3})[，。；：！？]/g,
     advice: '前半是英文，标点却用了中文的。英文句子用英文标点。',
   },
@@ -482,6 +486,11 @@ export function auditTypography(text, options = {}) {
           Math.min(clauseEnd, match.index + match[0].length + (rule.asciiAfter ?? 0)),
         )
         const inAsciiAfter = !rule.asciiAfter || !/[一-龥]/.test(after)
+        // 整句够不够「一句英文」：数这一句里的英文词，一个缩写（MIT、OK）不算。
+        const clauseWords = rule.minLatinWords
+          ? (text.slice(clauseStart, clauseEnd).match(/[A-Za-z]{2,}/g) ?? []).length
+          : 0
+        const enoughLatin = !rule.minLatinWords || clauseWords >= rule.minLatinWords
         // Markdown 硬换行：正好两个空格结尾是语法，不是手滑，不报也不改。
         const isHardBreak = rule.keepHardBreak === true && match[0] === '  '
         // 位置守卫：某些命中虽然形状对，但所在位置是别的语法的一部分
@@ -492,6 +501,7 @@ export function auditTypography(text, options = {}) {
           inCjkContext &&
           inAsciiContext &&
           inAsciiAfter &&
+          enoughLatin &&
           !isHardBreak &&
           passesGuard
         ) {

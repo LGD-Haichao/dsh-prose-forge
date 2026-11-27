@@ -317,6 +317,8 @@ const checks = [
   ['命令行参数不误伤', (auditTypography('用 --store-dir 参数。').counts['dash-double-hyphen'] ?? 0) === 0],
   ['中文句里英文开头不误报', (auditTypography('Redis，是一个内存数据库。').counts['en-punct-cjk'] ?? 0) === 0],
   ['整句英文用中文标点仍报', (auditTypography('restart the service。').counts['en-punct-cjk'] ?? 0) === 1],
+  ['缩写单独成句不算英文句', (auditTypography('MIT。').counts['en-punct-cjk'] ?? 0) === 0],
+  ['两个词的英文句子仍然报', (auditTypography('Hello，world。').counts['en-punct-cjk'] ?? 0) === 2],
   ['判断英文语境不跨句', (auditTypography('中间一句。restart the service。').counts['en-punct-cjk'] ?? 0) === 1],
   ['后向窗口也不跨句', (auditTypography('restart the service。\n\n他说下一句。').counts['en-punct-cjk'] ?? 0) === 1],
   ['乘方算一个词', fixTypography('容量 2^10 个。', { kinds: ['cjk-latin-space'] }).text === '容量2^10个。'],
