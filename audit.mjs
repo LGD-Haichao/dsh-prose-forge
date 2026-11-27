@@ -31,6 +31,7 @@ const SAMPLES = {
   'halfwidth-paren-cn': '(见 README)。',
   'cjk-latin-space': '放在 Redis 里。',
   'unbalanced-mark': '他说「走吧。',
+  'fullwidth-alnum': '２０２４年的数据。',
 }
 
 let failed = 0

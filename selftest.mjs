@@ -6,7 +6,7 @@
  */
 
 import { analyze, auditStructure } from './analyze.js'
-import { auditTypography } from './typography.js'
+import { auditTypography, fixTypography } from './typography.js'
 import { PARTS, lookup } from './rules.js'
 import { STYLE_PROMPT } from './prompt.js'
 
@@ -232,6 +232,14 @@ const checks = [
   ['英文句子内部不动', auditTypography('The parser is robust.').total === 0],
   ['符号两侧的空格也清', auditTypography('改配置 + 触发重载').findings.some(f => f.fix === '置+触')],
   ['英文之间的加号不动', auditTypography('A + B 的组合').total === 0],
+  ['落单的英文引号被抓', (auditTypography('他说"走吧。').counts['ascii-quote-cn'] ?? 0) === 1],
+  ['成对英文引号只报一次', (auditTypography('他说"走吧"。').counts['ascii-quote-cn'] ?? 0) === 1],
+  ['英文句子里的引号不动', auditTypography('the "spec" file is here').total === 0],
+  ['一行三个引号报两处', (auditTypography('前面 "甲" 中间 "乙').counts['ascii-quote-cn'] ?? 0) === 2],
+  ['全角数字被标出', (auditTypography('２０２４年的数据。').counts['fullwidth-alnum'] ?? 0) === 1],
+  ['全角数字能修成半角', fixTypography('２０２４年。', { kinds: ['fullwidth-alnum'] }).text === '2024年。'],
+  ['全角字母能修', fixTypography('用Ｒｅｄｉｓ缓存。', { kinds: ['fullwidth-alnum'] }).text === '用Redis缓存。'],
+  ['斜杠两侧空格也收', auditTypography('和 / 或').findings.some(f => f.fix === '和/或')],
   ['型号两侧空格都清', (auditTypography('跑在 5G 网络上。').counts['cjk-latin-space'] ?? 0) === 1],
   [
     '型号的修法去掉两侧空格',

@@ -137,7 +137,7 @@ dsh plugin --profile desktop add "link:/path/to/dsh-prose-forge"
           - cjk-latin-space
 ```
 
-改完立即生效，不用重启——宿主会重新读这份覆盖层。可关的检查项：`halfwidth-punct`、`halfwidth-punct-mixed`、`halfwidth-period`、`ellipsis`、`dash-double-hyphen`、`dash-single`、`ascii-quote-cn`、`repeat-punct`、`punct-line-start`、`space-before-punct`、`fullwidth-space`、`double-space`、`trailing-space`、`en-punct-cjk`、`halfwidth-paren-cn`、`cjk-latin-space`、`unbalanced-mark`。
+改完立即生效，不用重启——宿主会重新读这份覆盖层。可关的检查项：`halfwidth-punct`、`halfwidth-punct-mixed`、`halfwidth-period`、`ellipsis`、`dash-double-hyphen`、`dash-single`、`ascii-quote-cn`、`repeat-punct`、`punct-line-start`、`space-before-punct`、`fullwidth-space`、`double-space`、`trailing-space`、`en-punct-cjk`、`halfwidth-paren-cn`、`cjk-latin-space`、`unbalanced-mark`、`fullwidth-alnum`。
 
 ## 工具
 
@@ -160,7 +160,7 @@ dsh plugin --profile desktop add "link:/path/to/dsh-prose-forge"
 
 判定四档：`干净` < `基本干净` < `有模板腔` < `模板腔重`。密度算法是加权严重度÷折算字数 × 300。命中不足3处时最高只判「基本干净」——短文本里一个词就能把密度顶上去，不该给整段定性。
 
-同时返回中文排版体检，和文风**分开算分**——排版错是硬伤，文风是口味，混在一起会互相淹没。17项检查：半角标点（含中文句子里夹英文词的情况）、半角括号包中文、标点前的空格、汉字与英文/数字之间的空格、省略号写成三个点、破折号单个或两个连字符、英文引号包中文、英文句子混中文标点、重复标点、标点出现在行首、全角空格、连续空格、行尾空白，以及引号与括号是否配对。
+同时返回中文排版体检，和文风**分开算分**——排版错是硬伤，文风是口味，混在一起会互相淹没。18项检查：半角标点（含中文句子里夹英文词的情况）、半角括号包中文、标点前的空格、汉字与英文/数字之间的空格、省略号写成三个点、破折号单个或两个连字符、英文引号包中文、英文句子混中文标点、重复标点、标点出现在行首、全角空格、连续空格、行尾空白，以及引号与括号是否配对。
 
 判定看上下文，不做语种识别：`Wait... let me check` 里的三个点不报（英文省略号合法），`用 --store-dir 装` 也不报（那是命令行参数），但 `等一下...就好`、`段落一 -- 段落二`、`Hello，world` 都会报。
 
@@ -234,7 +234,7 @@ node node_modules/dsh-prose-forge/selftest.mjs
 | 新建 profile 后 `dsh plugin --profile pf-test add github:…` | 自动写进 `dsh.profile.bundles`，`--dump-config` 能看到 `# == dsh-prose-forge` |
 | 已装 0.6.4 的 profile 再跑一次 add | 0.6.4 → 0.6.5，会拉仓库 HEAD |
 | `add "github:…#17aa8cf"` 钉提交 | 从 0.6.5 回退到 0.6.4 |
-| 更新后跑自检 | 17 项覆盖检查 + 81 项断言全过，`--dump-config` 里挂载行还在 |
+| 更新后跑自检 | 18 项覆盖检查 + 81 项断言全过，`--dump-config` 里挂载行还在 |
 | UTF-16BE 往返、目录当文件、文件不存在、空文件、未知 kinds | 行为都正确，没有意外 |
 
 ## 跨机器
@@ -264,7 +264,7 @@ index.js          三面挂载入口：契约段 + 两个工具 + skill provider
 prompt.js         常驻契约（按字付费，改这里等于改每次回复）
 rules.js          六份规则全文，硬编码不读 md
 analyze.js        扫描器：16 组正则、结构指标、结构审计、代码掩码、自定义规则
-typography.js     中文排版体检：17 项检查 + 机械修正建议
+typography.js     中文排版体检：18 项检查 + 机械修正建议
 selftest.mjs      扫描器自测
 harness.mjs       假宿主自测
 measure.mjs       每轮成本测量

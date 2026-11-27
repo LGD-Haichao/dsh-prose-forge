@@ -43,6 +43,8 @@ const FIXES = {
   'en-punct-cjk': m => ASCII_MAP[m] ?? m,
   'halfwidth-paren-cn': m => `（${m.slice(1, -1)}）`,
   'fullwidth-space': () => ' ',
+  'fullwidth-alnum': m =>
+    m.replace(/[０-９Ａ-Ｚａ-ｚ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)),
   'trailing-space': () => '',
 }
 
@@ -104,6 +106,13 @@ const RULES = [
     severity: 2,
     re: new RegExp(`"[${CJK}][^"\\n]{0,60}"`, 'g'),
     advice: '中文内容用中文引号「」或“”，不要用英文直引号。',
+  },
+  {
+    kind: 'fullwidth-alnum',
+    group: '全角字母数字',
+    severity: 1,
+    re: /[０-９Ａ-Ｚａ-ｚ]+/g,
+    advice: '全角字母和数字在中文里像排版事故，换半角：２０２４→2024、Ｒｅｄｉｓ→Redis。',
   },
   {
     kind: 'repeat-punct',
@@ -256,7 +265,7 @@ function latinSpacingFindings(text, starts) {
 
   // 四、汉字 空格 符号 空格 汉字：改配置 + 触发重载 → 改配置+触发重载。
   // 只认几个常见连接符号，斜杠和竖线不碰——那是路径和表格。
-  for (const match of text.matchAll(/([一-龥])([ \t]*)([+&×÷=~·])([ \t]*)([一-龥])/g)) {
+  for (const match of text.matchAll(/([一-龥])([ \t]*)([+&×÷=~·/])([ \t]*)([一-龥])/g)) {
     const [, left, gapBefore, symbol, gapAfter, right] = match
     if (gapBefore === '' && gapAfter === '') continue
     push(match.index, match[0], `${left}${symbol}${right}`)
@@ -299,6 +308,45 @@ function balanceHit(starts, index, detail) {
  * @param {number[]} starts - 每行起始下标
  * @returns {object[]} 命中列表
  */
+/**
+ * 落单的英文直引号。
+ *
+ * 按行数引号：偶数正常，奇数说明少了一个。成对的由前面的规则报，
+ * 这条只补落单的，同一行不重复报。行内没有汉字就不算——那是英文原文。
+ *
+ * @param {string} text - 已掩码的正文
+ * @param {number[]} starts - 每行起始下标
+ * @param {object[]} existing - 已有命中
+ * @param {boolean} raw - 是否原始模式（不截断）
+ * @returns {object[]} 命中列表
+ */
+function quoteParityFindings(text, starts, raw) {
+  const out = []
+  const cjkRe = new RegExp(`[${CJK}]`)
+
+  for (let i = 0; i < starts.length; i += 1) {
+    const start = starts[i]
+    const end = i + 1 < starts.length ? starts[i + 1] - 1 : text.length
+    const line = text.slice(start, end)
+    const quotes = line.split('"').length - 1
+    if (quotes === 0 || quotes % 2 === 0) continue
+    if (!cjkRe.test(line)) continue
+
+    const col = line.indexOf('"') + 1
+    out.push({
+      kind: 'ascii-quote-cn',
+      group: '引号',
+      severity: 2,
+      line: i + 1,
+      col,
+      index: start + col - 1,
+      match: !raw && line.length > 40 ? `${line.slice(0, 40)}…` : line,
+      advice: '这一行的英文直引号配对丢了。中文内容用中文引号「」或“”，成对写。',
+    })
+  }
+  return out
+}
+
 function balanceFindings(text, starts) {
   const out = []
   for (const [open, close] of BALANCE_PAIRS) {
@@ -381,6 +429,7 @@ export function auditTypography(text, options = {}) {
 
     findings.push(...latinSpacingFindings(text, starts))
     findings.push(...balanceFindings(text, starts))
+    findings.push(...quoteParityFindings(text, starts, raw))
 
     // skip 要作用到全部检查，不只是正则那批。数字空格和配对检查是后加的，
     // 如果只在规则循环里判 skip，它们会绕过去。
@@ -408,9 +457,7 @@ export function auditTypography(text, options = {}) {
 
 /** 已知的检查项，写进文档和配置校验用。 */
 export const TYPO_KINDS = [
-  ...RULES.map(rule => rule.kind),
-  'cjk-latin-space',
-  'unbalanced-mark',
+  ...new Set([...RULES.map(rule => rule.kind), 'cjk-latin-space', 'unbalanced-mark']),
 ]
 
 /**
