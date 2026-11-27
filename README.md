@@ -138,6 +138,30 @@ dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
 
 `examples` 是这一轮加的。规则说“删元话语”，改好的样子还得靠例子——模型对着16组对照比对着12条禁令更容易对齐。它按需加载，不占每轮成本。
 
+## 更新
+
+github 装法跟仓库 HEAD 走，pnpm 按 lockfile 里记的 commit 解析。要拉最新版：
+
+```sh
+dsh plugin --profile <你的 profile> add github:LGD-Haichao/dsh-prose-forge
+```
+
+装完在本机跑一次自检，确认这份代码能跑：
+
+```sh
+node node_modules/dsh-prose-forge/audit.mjs
+node node_modules/dsh-prose-forge/selftest.mjs
+```
+
+三个脚本都不用装依赖，直接跑：`selftest` 查扫描器，`harness` 查插件挂载形状，`audit` 查规则覆盖和文档一致性。
+
+## 跨机器
+
+- 零运行时依赖，`import` 只有 `node:fs`、`node:path`、`node:url` 和本地文件，装完不需要再装任何东西。
+- 插件目录放纯 ASCII 路径。Windows 下 CLI 传参会把中文路径转成乱码，这是踩过的坑。
+- 换行统一 LF（`.gitattributes` 里钉死），macOS 和 Linux 上不会出现满屏 CRLF 差异。
+- 读文件按 BOM 认编码，UTF-8、UTF-8 BOM、UTF-16LE、UTF-16BE 都能读；`prose_fix` 写回时按原编码写，不会把 UTF-16 文件偷偷改成 UTF-8。
+
 ## 自测
 
 ```powershell
