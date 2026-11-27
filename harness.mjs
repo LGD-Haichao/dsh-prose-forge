@@ -327,6 +327,22 @@ check(
   '',
 )
 check(
+  '缩进代码块不改',
+  (await fixToolRef.execute({ text: '说明：\n\n    const n = 共 3 个\n\n正文 共 3 个。', kinds: ['cjk-latin-space'] })).text ===
+    '说明：\n\n    const n = 共 3 个\n\n正文 共3个。',
+  '',
+)
+check(
+  '嵌套列表仍然照改',
+  (await fixToolRef.execute({ text: '- 项\n    - 子项 共 3 个', kinds: ['cjk-latin-space'] })).text === '- 项\n    - 子项 共3个',
+  '',
+)
+check(
+  '数学块不改',
+  (await fixToolRef.execute({ text: '$$\nE = 共 3 个\n$$', kinds: ['cjk-latin-space'] })).text === '$$\nE = 共 3 个\n$$',
+  '',
+)
+check(
   '多行 HTML 注释不改',
   (await fixToolRef.execute({ text: '<!--\n第一行 共 3 个\n-->\n正文 共 3 个。', kinds: ['cjk-latin-space'] })).text ===
     '<!--\n第一行 共 3 个\n-->\n正文 共3个。',

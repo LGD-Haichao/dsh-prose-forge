@@ -30,6 +30,10 @@ Redis，是一个内存数据库。restart the service。
 
 <!-- HTML 注释 共 3 个，不该被改 -->
 
+缩进代码块（四空格）也是代码：
+
+    const n = 共 3 个
+
 HTML 代码标签 <code>共 3 个</code> 内容不该动。
 
 代码和配置不该动：

@@ -263,6 +263,42 @@ export function maskText(text) {
     cursor = newline + 1
   }
 
+  // 缩进代码块：四个空格或一个制表符开头，且前面是空行。
+  // Markdown 规范里这是代码块，里面的空格是内容。要避开嵌套列表——
+  // 「- 项」下面的四空格缩进是列表的延续，不是代码。
+  let prevNonBlank = null
+  let prevWasBlank = true
+  let inIndented = false
+  cursor = 0
+  while (cursor <= text.length) {
+    const newline = text.indexOf('\n', cursor)
+    const end = newline === -1 ? text.length : newline
+    const line = text.slice(cursor, end)
+    const isBlank = line.trim() === ''
+    const isIndented = /^(?: {4,}|\t)/.test(line)
+
+    if (inIndented) {
+      if (isBlank || isIndented) paint(cursor, end, true)
+      else inIndented = false
+    } else if (isIndented && prevWasBlank) {
+      const prevIsList = prevNonBlank !== null && /^\s{0,3}(?:[-*+]|\d+[.)])\s/.test(prevNonBlank)
+      if (!prevIsList) {
+        inIndented = true
+        paint(cursor, end, true)
+      }
+    }
+
+    if (!isBlank) prevNonBlank = line
+    prevWasBlank = isBlank
+    if (newline === -1) break
+    cursor = newline + 1
+  }
+
+  // 数学块：$$ … $$。公式里的空格和标点不是散文。
+  for (const match of text.matchAll(/\$\$[\s\S]*?\$\$/g)) {
+    paint(match.index, match.index + match[0].length, true)
+  }
+
   // 双反引号包住的片段要先处理：markdown里 `` `代码` `` 靠外层双反引号转义。
   for (const match of text.matchAll(/``[\s\S]{0,180}?``/g)) {
     paint(match.index, match.index + match[0].length, true)
