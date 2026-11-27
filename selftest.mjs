@@ -200,6 +200,17 @@ const checks = [
     (auditTypography('用 Redis,然后处理。').counts['halfwidth-punct-mixed'] ?? 0) === 1,
   ],
   ['中文编号标题识别为文档', analyze(NUMBERED_DOC).mode === 'doc'],
+  [
+    '短文档不判标题过密',
+    analyze('# 标题\n\n短句。\n', { mode: 'doc' }).notes.every(note => !note.includes('标题过密')),
+  ],
+  [
+    '标题密集的长文档会提示',
+    analyze(
+      Array.from({ length: 10 }, (_, i) => `## 小${i}\n\n一句。\n`).join('\n'),
+      { mode: 'doc' },
+    ).notes.some(note => note.includes('标题过密')),
+  ],
   ['结构审计数出中文标题', auditStructure(NUMBERED_DOC).headingCount === 3],
   [
     '代码块不算长段落',

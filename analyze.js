@@ -491,6 +491,10 @@ function computeStats(text, codeChars = 0) {
 /** 结构层提示：正则抓不到，但读起来最像AI的那几件事。 */
 function structuralNotes(stats, mode) {
   const notes = []
+  // 比例类指标要先看样本量。二十行以下的短文档，一个标题就能占去一半行，
+  // 「标题过密」就成了噪音；正文不足两百字时加粗比例同样没有意义。
+  const enoughLines = stats.lines >= 20
+  const enoughChars = stats.chars >= 200
   if (stats.sentences >= 8 && stats.sentenceCV < 0.28) {
     notes.push(`句长过于均匀（变异系数 ${stats.sentenceCV}）。人写东西会有长句夹短句，这里每句都差不多长。`)
   }
@@ -500,13 +504,13 @@ function structuralNotes(stats, mode) {
   if (stats.avgSentenceUnits > 55) {
     notes.push(`平均句长折合 ${stats.avgSentenceUnits}（汉字算1、英文词算2），偏长。长句要承担因果和条件，光长不给落点就是拖。`)
   }
-  if (stats.boldRatio > 4) {
+  if (enoughChars && stats.boldRatio > 4) {
     notes.push(`加粗占正文 ${stats.boldRatio}%，偏多。每段都有加粗，等于没有重点。`)
   }
-  if (stats.listRatio > 35) {
+  if (enoughLines && stats.listRatio > 35) {
     notes.push(`列表行占 ${stats.listRatio}%，列表化过度。三件以内用句子连起来。`)
   }
-  if (mode === 'doc' && stats.headingRatio > 25) {
+  if (mode === 'doc' && enoughLines && stats.headingRatio > 25) {
     notes.push(`标题行占 ${stats.headingRatio}%，标题过密。层级多到读者读标题就够了，说明正文没信息。`)
   }
   if (stats.emDashPerK > 3) {
