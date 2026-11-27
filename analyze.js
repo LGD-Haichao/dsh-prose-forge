@@ -105,7 +105,7 @@ const RULES = [
     group: '标题八股',
     severity: 2,
     modes: ['doc'],
-    re: /^#{1,6}[ \t].*(?:浅谈|浅析|探析|刍议|管窥|视域|实践与思考|赋能|驱动)/gm,
+    re: /^(?:#{1,6}[ \t]|[一二三四五六七八九十百]+[、.．][ \t]*|[（(][一二三四五六七八九十百]+[）)][ \t]*).*(?:浅谈|浅析|探析|刍议|管窥|视域|实践与思考|赋能|驱动)/gm,
     advice: '标题写名词或动宾短语。"插件安装实践探析" → "怎么装插件"。',
   },
   {
@@ -152,9 +152,12 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, Math.round(value)))
 }
 
-/** 是否有文档特征：markdown 标题，或编号章节。 */
+/** 是否有文档特征：markdown 标题、中文编号标题，或编号章节。 */
 function looksLikeDocument(text) {
   if (/^#{1,6}[ \t]+\S/m.test(text)) return true
+  // 中文编号标题（一、二、）在纯文本报告里很常见，markdown 里一个 # 都没有。
+  const chineseHeadings = (text.match(/^[一二三四五六七八九十百]+[、.．][ \t]*\S/gm) ?? []).length
+  if (chineseHeadings >= 2 && text.length > 60) return true
   return /^\s*\d+[.、][ \t]*\S/m.test(text) && text.length > 400
 }
 
@@ -277,8 +280,21 @@ export function auditStructure(text) {
 
   const headings = []
   lines.forEach((line, idx) => {
-    const match = /^(#{1,6})[ \t]+(\S.*)$/.exec(line)
-    if (match) headings.push({ level: match[1].length, title: match[2].trim(), line: idx + 1, index: idx })
+    const markdown = /^(#{1,6})[ \t]+(\S.*)$/.exec(line)
+    if (markdown) {
+      headings.push({ level: markdown[1].length, title: markdown[2].trim(), line: idx + 1, index: idx })
+      return
+    }
+    // 中文编号标题：一、二、按二级算，（）里的编号按三级算。纯文本报告全靠这个撑结构。
+    const numbered = /^[一二三四五六七八九十百]+[、.．][ \t]*(\S.*)$/.exec(line)
+    if (numbered) {
+      headings.push({ level: 2, title: numbered[1].trim(), line: idx + 1, index: idx })
+      return
+    }
+    const nested = /^[（(][一二三四五六七八九十百]+[）)][ \t]*(\S.*)$/.exec(line)
+    if (nested) {
+      headings.push({ level: 3, title: nested[1].trim(), line: idx + 1, index: idx })
+    }
   })
 
   // 层级跳跃：H2 直接到 H4
@@ -570,7 +586,11 @@ export function analyze(text, options = {}) {
     const stats = computeStats(masked, codeChars)
     const weighted = hits.reduce((sum, hit) => sum + (WEIGHT[hit.severity] ?? 1), 0)
     const score = stats.units > 0 ? Math.round((weighted / stats.units) * 300 * 10) / 10 : 0
-    const tier = VERDICTS.find(v => score < v.max) ?? VERDICTS[VERDICTS.length - 1]
+    // 命中不足 3 处时把判定压到「基本干净」为止。
+    // 密度是"每 300 单位"的强度，短文本里一个词就能跨过阈值；单个命中不足以给整段定性。
+    const tierIndex = VERDICTS.findIndex(v => score < v.max)
+    const safeIndex = tierIndex < 0 ? VERDICTS.length - 1 : tierIndex
+    const tier = VERDICTS[hits.length < 3 ? Math.min(safeIndex, 1) : safeIndex]
 
     const groups = {}
     for (const hit of hits) groups[hit.group] = (groups[hit.group] ?? 0) + 1

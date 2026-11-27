@@ -5,7 +5,7 @@
  *   node selftest.mjs
  */
 
-import { analyze } from './analyze.js'
+import { analyze, auditStructure } from './analyze.js'
 import { auditTypography } from './typography.js'
 import { PARTS, lookup } from './rules.js'
 import { STYLE_PROMPT } from './prompt.js'
@@ -41,6 +41,35 @@ const DOC_SAMPLE = `# 插件安装实践探析
 ## 二、结语
 
 综上所述，该方案具有重要的里程碑意义，希望对你有帮助。`
+
+const NUMBERED_DOC = `项目说明
+
+一、背景
+
+这套服务上线三个月，日请求从两万涨到六十万，单机扛不住了。
+
+二、方案
+
+拆成三层：接入、逻辑、存储。接入层只做鉴权和限流。
+
+三、结果
+
+P99 从 1.2 秒降到 220 毫秒。`
+
+const CLICHE_DOC = `项目总结
+
+一、底层逻辑与范式探析
+
+值得注意的是，这个方案在一定程度上具有重要意义。团队在过去三个月里做了大量尝试，
+包括重构数据链路、调整部署方式以及引入新的一致性校验。
+
+二、未来展望
+
+后续会继续推进相关工作。`
+
+const ONE_HIT_EN = 'The parser is robust. We leverage a streaming decoder to keep memory flat. Each record is validated before it reaches the sink, so bad data fails fast.'
+
+const THREE_HITS_EN = 'We leverage a streaming decoder. It is important to note that this keeps memory flat. We delve into the realm of validation before the sink.'
 
 function header(title) {
   console.log(`\n=== ${title} ===`)
@@ -170,6 +199,12 @@ const checks = [
     '无空格混排的半角逗号被抓',
     (auditTypography('用 Redis,然后处理。').counts['halfwidth-punct-mixed'] ?? 0) === 1,
   ],
+  ['中文编号标题识别为文档', analyze(NUMBERED_DOC).mode === 'doc'],
+  ['结构审计数出中文标题', auditStructure(NUMBERED_DOC).headingCount === 3],
+  ['中文编号的八股标题被抓', (analyze(CLICHE_DOC).groups['标题八股'] ?? 0) > 0],
+  ['单个命中不判模板腔', analyze(ONE_HIT_EN).verdict === 'mostly clean'],
+  ['两处命中仍压在同一档', analyze(ONE_HIT_EN).hitCount === 1],
+  ['三处命中照常判模板腔', analyze(THREE_HITS_EN).verdict !== 'clean'],
   ['排版：行尾空格被抓住', (analyze('这行有空格   \n下一行。').typography.counts['trailing-space'] ?? 0) > 0],
   [
     '排版：代码块里的半角标点不算',
