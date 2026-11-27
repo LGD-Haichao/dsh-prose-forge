@@ -140,10 +140,22 @@ dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
 
 ## 更新
 
-github 装法跟仓库 HEAD 走，pnpm 按 lockfile 里记的 commit 解析。要拉最新版：
+github 装法跟仓库 HEAD 走，pnpm 按 lockfile 里记的 commit 解析。要拉最新版，重跑一次 add：
 
 ```sh
 dsh plugin --profile <你的 profile> add github:LGD-Haichao/dsh-prose-forge
+```
+
+要回滚或钉住某个提交，在仓库名后面加 `#` 和提交号：
+
+```sh
+dsh plugin --profile <你的 profile> add "github:LGD-Haichao/dsh-prose-forge#17aa8cf"
+```
+
+查当前装的是哪一版：
+
+```sh
+node -e "console.log(require('./node_modules/dsh-prose-forge/package.json').version)"
 ```
 
 装完在本机跑一次自检，确认这份代码能跑：
@@ -165,6 +177,9 @@ node node_modules/dsh-prose-forge/selftest.mjs
 | 装好的那份跑三套测试 | 81 + 89 + 17 全过 |
 | `pnpm update dsh-prose-forge` | 0.6.2 → 0.6.3，拉的是仓库 HEAD |
 | 新建 profile 后 `dsh plugin --profile pf-test add github:…` | 自动写进 `dsh.profile.bundles`，`--dump-config` 能看到 `# == dsh-prose-forge` |
+| 已装 0.6.4 的 profile 再跑一次 add | 0.6.4 → 0.6.5，会拉仓库 HEAD |
+| `add "github:…#17aa8cf"` 钉提交 | 从 0.6.5 回退到 0.6.4 |
+| 更新后跑自检 | 17 项覆盖检查 + 81 项断言全过，`--dump-config` 里挂载行还在 |
 | UTF-16BE 往返、目录当文件、文件不存在、空文件、未知 kinds | 行为都正确，没有意外 |
 
 ## 跨机器
