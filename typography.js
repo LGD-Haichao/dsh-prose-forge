@@ -410,14 +410,11 @@ export function auditTypography(text, options = {}) {
       let match = re.exec(text)
       let perRule = 0
       while (match !== null && perRule < 20) {
-        // 英文语境里的 ... 和单个 — 是合法用法，只在附近有汉字时才判为错误。
-        const nearby = text.slice(
-          Math.max(0, match.index - 15),
-          Math.min(text.length, match.index + match[0].length + 15),
-        )
-        const inCjkContext = !rule.cjkContext || cjkRe.test(nearby)
-        // 判断「这句是不是英文」时，只看当前句——窗口不能跨过上一个句末标点。
-        // 否则一段中文里夹的最后一句英文，会被前面的中文传染，判成中文语境漏掉。
+        const matchEnd = match.index + match[0].length
+        // 句界：往前往后各找最近的中文句末标点或换行。
+        // 所有「附近有没有汉字」的判断都以这句为界——只要窗口跨过句号，
+        // 下一句里的英文符号就会被上一句的中文传染，`中文。see 3...5 items`
+        // 里的三个点会被当成中文省略号。
         const clauseStart =
           Math.max(
             text.lastIndexOf('。', match.index - 1),
@@ -425,6 +422,20 @@ export function auditTypography(text, options = {}) {
             text.lastIndexOf('？', match.index - 1),
             text.lastIndexOf('\n', match.index - 1),
           ) + 1
+        const nextBreaks = [
+          text.indexOf('。', matchEnd),
+          text.indexOf('！', matchEnd),
+          text.indexOf('？', matchEnd),
+          text.indexOf('\n', matchEnd),
+        ].filter(index => index !== -1)
+        const clauseEnd = nextBreaks.length > 0 ? Math.min(...nextBreaks) : text.length
+
+        // 英文语境里的 ... 和单个 — 是合法用法，只在同一句里有汉字时才判为错误。
+        const nearby = text.slice(
+          Math.max(clauseStart, match.index - 15),
+          Math.min(clauseEnd, matchEnd + 15),
+        )
+        const inCjkContext = !rule.cjkContext || cjkRe.test(nearby)
         const before = text.slice(
           Math.max(clauseStart, match.index - (rule.asciiBefore ?? 0)),
           match.index,
