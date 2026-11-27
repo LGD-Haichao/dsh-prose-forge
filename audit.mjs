@@ -32,6 +32,7 @@ const SAMPLES = {
   'cjk-latin-space': '放在 Redis 里。',
   'unbalanced-mark': '他说「走吧。',
   'fullwidth-alnum': '２０２４年的数据。',
+  'invisible-char': '放在\u200BRedis里。',
 }
 
 let failed = 0

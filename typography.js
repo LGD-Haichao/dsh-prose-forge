@@ -43,6 +43,7 @@ const FIXES = {
   'en-punct-cjk': m => ASCII_MAP[m] ?? m,
   'halfwidth-paren-cn': m => `（${m.slice(1, -1)}）`,
   'fullwidth-space': () => ' ',
+  'invisible-char': () => '',
   'fullwidth-alnum': m =>
     m.replace(/[０-９Ａ-Ｚａ-ｚ]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)),
   'trailing-space': () => '',
@@ -147,6 +148,16 @@ const RULES = [
     severity: 1,
     re: /\u3000/g,
     advice: '用普通空格，不要用全角空格。',
+  },
+  {
+    // 零宽空格、零宽连接符、词连接符、BOM、双向控制符。
+    // 从网页或PDF复制粘贴时最容易带进来，肉眼看不见，但会让搜索、替换、版本对比全部失灵。
+    // 掩码用的 \u00A0 是普通不换行空格，不在这条里。
+    kind: 'invisible-char',
+    group: '不可见字符',
+    severity: 2,
+    re: /[\u200B-\u200D\u2060\uFEFF\u202A-\u202E]/g,
+    advice: '这里是肉眼看不见的字符（零宽空格/双向控制符/BOM），多半是复制粘贴带进来的，删掉。',
   },
   {
     kind: 'double-space',
@@ -254,9 +265,12 @@ function latinSpacingFindings(text, starts) {
   // 一个拉丁标记：Redis、v2.3.1、5G、50%、config.yaml都算一个整体。
   // 末尾允许「空格 + 百分号」，好让50 % 和前面的空格一起收掉。
   // 结尾不许是点或连字符，否则会把句号、范围号一并吞进来。
-  const MID = String.raw`A-Za-z0-9._#+%‰'’/@°℃-`
+  // 逗号、冒号、波浪号都算词内字符：1,000、10:30、3~5、3～5 各是一个整体，
+  // 不然词被截断，「1,000 个」只会清掉前面的空格，后面的留着。
+  const MID = String.raw`A-Za-z0-9._#+%‰'’/@°℃,:~～-`
   const END = String.raw`A-Za-z0-9_+#%‰°℃`
-  const token = String.raw`[A-Za-z0-9](?:[${MID}]*[${END}])?(?:[ \t]*[%‰％])?`
+  // 允许前导正负号，「电话 +86 138…」里的 +86 才算一个词。
+  const token = String.raw`[+-]?[A-Za-z0-9](?:[${MID}]*[${END}])?(?:[ \t]*[%‰％])?`
   const compact = value => value.replace(/[ \t]+/g, '')
 
   // 一、汉字 标记 汉字：任一侧有空格就压掉。
