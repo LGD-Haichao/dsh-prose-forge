@@ -182,6 +182,9 @@ const RULES = [
     group: '空格',
     severity: 1,
     re: /[ \t]+(?=\r?\n|$)/g,
+    // Markdown 里「行尾正好两个空格」是硬换行，不是手滑。删了会把换行弄丢。
+    // 一个空格和三个以上仍然算手滑——前者没意义，后者多半是编辑器留下的。
+    keepHardBreak: true,
     advice: '行尾空白删掉，版本对比时会变成噪音。',
   },
   {
@@ -477,7 +480,9 @@ export function auditTypography(text, options = {}) {
           Math.min(clauseEnd, match.index + match[0].length + (rule.asciiAfter ?? 0)),
         )
         const inAsciiAfter = !rule.asciiAfter || !/[一-龥]/.test(after)
-        if (match[0].length > 0 && inCjkContext && inAsciiContext && inAsciiAfter) {
+        // Markdown 硬换行：正好两个空格结尾是语法，不是手滑，不报也不改。
+        const isHardBreak = rule.keepHardBreak === true && match[0] === '  '
+        if (match[0].length > 0 && inCjkContext && inAsciiContext && inAsciiAfter && !isHardBreak) {
           const { line, col } = locate(starts, match.index)
           const fixer = FIXES[rule.kind]
           findings.push({

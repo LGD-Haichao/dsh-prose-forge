@@ -317,6 +317,9 @@ check('混合文档保留 frontmatter', mixedFixed.text.includes('title: 共 3 �
 check('混合文档保留代码块', mixedFixed.text.includes('const n = 共 3 个'), '')
 check('混合文档保留行内代码', mixedFixed.text.includes('行内 `共 3 个` 示例'), '')
 check('混合文档正文已清', mixedFixed.text.includes('正文 共3个文件。') && mixedFixed.text.includes('- 列表 共3项'), mixedFixed.text)
+check('HTML 代码标签内容不改', (await fixToolRef.execute({ text: '<code>共 3 个</code> 示例。' })).applied === 0, '')
+check('HTML 正文照改', (await fixToolRef.execute({ text: '<div>共 3 个</div>' })).text === '<div>共3个</div>', '')
+check('硬换行不被删', (await fixToolRef.execute({ text: '行一  \n行二 共 3 个。' })).text === '行一  \n行二 共3个。', '')
 
 let failed = 0
 for (const { label, pass, detail } of checks) {

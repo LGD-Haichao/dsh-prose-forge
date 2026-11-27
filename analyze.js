@@ -278,6 +278,17 @@ export function maskText(text) {
     paint(match.index, match.index + match[0].length, false)
   }
 
+  // HTML 里放代码的标签：<code>、<pre>、<kbd>、<samp>。连内容一起掩，
+  // 里面的空格是内容，不是排版错误。
+  for (const match of text.matchAll(/<(code|pre|kbd|samp)\b[^>]*>[\s\S]*?<\/\1\s*>/gi)) {
+    paint(match.index, match.index + match[0].length, true)
+  }
+
+  // 其余 HTML 标签本身不扫，标签之间的正文照扫。
+  for (const match of text.matchAll(/<\/?[a-zA-Z][^>\n]{0,80}>/g)) {
+    paint(match.index, match.index + match[0].length, false)
+  }
+
   // 短引文：只掩引号里面的内容，引号本身留着，好让排版规则继续判断引号用法。
   for (const match of text.matchAll(/[“「『]([^”」』\n]{1,20})[”」』]/g)) {
     const innerStart = match.index + 1
