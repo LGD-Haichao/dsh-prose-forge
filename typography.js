@@ -487,8 +487,13 @@ export function auditTypography(text, options = {}) {
         )
         const inAsciiAfter = !rule.asciiAfter || !/[一-龥]/.test(after)
         // 整句够不够「一句英文」：数这一句里的英文词，一个缩写（MIT、OK）不算。
+        // 数词的时候，句号、问号、叹号处要就地截断——不能把下一句也算进来，
+        // 否则「MIT。Hello，world。」里的 MIT 会因为后面那句而变成英文句子。
+        // 逗号、分号则要往后看到这句真正结束，才能数全。
+        const endsSentence = /[。！？]/.test(match[0])
+        const wordsEnd = endsSentence ? match.index : clauseEnd
         const clauseWords = rule.minLatinWords
-          ? (text.slice(clauseStart, clauseEnd).match(/[A-Za-z]{2,}/g) ?? []).length
+          ? (text.slice(clauseStart, wordsEnd).match(/[A-Za-z]{2,}/g) ?? []).length
           : 0
         const enoughLatin = !rule.minLatinWords || clauseWords >= rule.minLatinWords
         // Markdown 硬换行：正好两个空格结尾是语法，不是手滑，不报也不改。
