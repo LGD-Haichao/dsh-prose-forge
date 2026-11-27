@@ -196,7 +196,21 @@ function coefficientOfVariation(values) {
 }
 
 /**
- * 把围栏代码块整块替换成等长空格，保留换行。
+ * 掩码字符。
+ *
+ * 不用普通空格：代码被替换成一长串空格后，会自己触发"连续空格"这类规则。
+ * 用不换行空格（\u00A0）——它在 JS 里算空白（\s），但不会被字面量 ` {2,}` 匹配，
+ * 也不会被 `[^\s]` 当成非空字符，正好隔开两侧。
+ */
+const MASK = '\u00A0'
+
+/** 这个位置是不是已经被掩掉了。 */
+function isMasked(char) {
+  return char === MASK || char === ' ' || char === '\t'
+}
+
+/**
+ * 把围栏代码块整块替换成等长掩码，保留换行。
  *
  * 目的有两个：代码不该按散文规则扫描（契约里写明代码例外），
  * 而用等长替换而不是删除，是为了让字符下标完全不变——行列号仍然对得上原文。
@@ -218,13 +232,22 @@ function maskCodeFences(text) {
 
     if (isFence || inFence) {
       for (let i = cursor; i < end; i += 1) {
-        if (buf[i] !== ' ' && buf[i] !== '\t') codeChars += 1
-        buf[i] = ' '
+        if (!isMasked(buf[i])) codeChars += 1
+        buf[i] = MASK
       }
     }
     if (isFence) inFence = !inFence
     if (newline === -1) break
     cursor = newline + 1
+  }
+
+  // 行内代码：单个反引号包住的内容同样是代码，不该按散文规则扫。
+  // 围栏行已经被上面掩成掩码，这里再掩一次不会重复计数。
+  for (const match of text.matchAll(/`[^`\n]+`/g)) {
+    for (let i = match.index; i < match.index + match[0].length; i += 1) {
+      if (!isMasked(buf[i])) codeChars += 1
+      buf[i] = MASK
+    }
   }
 
   return { masked: buf.join(''), codeChars }
@@ -455,19 +478,22 @@ export function analyze(text, options = {}) {
     return { ok: false, error: '文本为空，没有可扫描的内容。' }
   }
 
+  // 去 BOM：带 BOM 的文件里，第一行的标题会被 \uFEFF 顶掉，检测不到。
+  const source = text.replace(/^\uFEFF/, '')
+
   try {
     const requested = options.mode ?? 'auto'
     const mode = !['auto', 'chat', 'doc'].includes(requested)
-      ? (looksLikeDocument(text) ? 'doc' : 'chat')
+      ? (looksLikeDocument(source) ? 'doc' : 'chat')
       : requested === 'auto'
-        ? (looksLikeDocument(text) ? 'doc' : 'chat')
+        ? (looksLikeDocument(source) ? 'doc' : 'chat')
         : requested
     const limit = clamp(options.limit ?? 40, 1, 200)
 
-    // 代码块先掩成等长空格：代码不受散文规则约束，但下标不能动，行列号才对得上。
-    const { masked, codeChars } = maskCodeFences(text)
+    // 代码块先掩成等长掩码：代码不受散文规则约束，但下标不能动，行列号才对得上。
+    const { masked, codeChars } = maskCodeFences(source)
 
-    const starts = buildLineStarts(text)
+    const starts = buildLineStarts(source)
     const hits = []
     const custom = compileCustomRules(options.customRules)
     const allRules = custom.rules.length > 0 ? [...RULES, ...custom.rules] : RULES

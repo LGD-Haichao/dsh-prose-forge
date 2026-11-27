@@ -81,6 +81,8 @@ dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
 
 两者都给时以 `path` 为准；都不给直接报错。
 
+编码按 BOM 判断：UTF-8、UTF-8 BOM、UTF-16LE、UTF-16BE 都能读——Windows 上「另存为 Unicode」存的是 UTF-16LE，按 UTF-8 硬读会全是乱码，还会被误判成二进制。真二进制（含 `\u0000`）直接拒绝，不瞎猜。
+
 `mode`：`auto`（按有无 markdown 标题判断）/ `chat` / `doc`。`doc` 额外查标题八股和空转表述。`limit`：最多返回多少条命中，默认 40。
 
 判定四档：`干净` < `基本干净` < `有模板腔` < `模板腔重`。密度算法是加权严重度 ÷ 字数 × 300。
@@ -89,7 +91,9 @@ dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
 
 判定看上下文，不做语种识别：`Wait... let me check` 里的三个点不报（英文省略号合法），`用 --store-dir 装` 也不报（那是命令行参数），但 `等一下...就好`、`段落一 -- 段落二`、`Hello，world` 都会报。
 
-能机械修的直接给改法：`"一,"` → `"一，"`、`"..."` → `"……"`、`"Hello，"` → `"Hello,"`。最后这条只换标点，不补空格。代码块先掩掉，所以 `foo(a,b)` 不会被当成排版错误。
+能机械修的直接给改法：`"一,"` → `"一，"`、`"..."` → `"……"`、`"Hello，"` → `"Hello,"`。最后这条只换标点，不补空格。
+
+代码先掩掉再扫，围栏块和行内 `` `代码` `` 都算——所以 `foo(a,b)` 不会被当成排版错误，正文里引用 `` `值得注意的是` `` 也不会被当成套话。掩码用的是不换行空格，避免把代码替换成一长串空格、反过来触发"连续空格"规则。
 
 给 `path` 时再加四项结构审计：
 
@@ -113,8 +117,8 @@ dsh plugin --profile <你的 profile> add "link:/path/to/dsh-prose-forge"
 ## 自测
 
 ```powershell
-node selftest.mjs    # 扫描器：脏/净中文、英文、文档模式、代码掩码、排版、自定义规则，30 项断言
-node harness.mjs     # 假宿主：65 项断言，验证三面挂载形状与端到端调用
+node selftest.mjs    # 扫描器：脏/净中文、英文、文档模式、代码掩码、排版、自定义规则，33 项断言
+node harness.mjs     # 假宿主：69 项断言，验证三面挂载形状、编码、端到端调用
 node measure.mjs     # 每轮固定开销与字面重合度，改完代码用它对账
 ```
 

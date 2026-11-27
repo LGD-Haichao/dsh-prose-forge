@@ -53,6 +53,29 @@ function buildPrompt(config) {
 
 // ---------------------------------------------------------------- 工具
 
+/**
+ * 把文件字节解成文本。
+ *
+ * Windows 上「另存为 Unicode」得到的是 UTF-16LE，直接按 utf8 读全是乱码，
+ * 还会因为成片的 \u0000 被误判成二进制文件。按 BOM 选编码，顺手去掉 BOM。
+ *
+ * @param {Buffer} buffer - 文件内容
+ * @returns {string} 文本
+ */
+function decodeText(buffer) {
+  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+    return buffer.toString('utf16le').replace(/^\uFEFF/, '')
+  }
+  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+    try {
+      return new TextDecoder('utf-16be').decode(buffer).replace(/^\uFEFF/, '')
+    } catch {
+      return buffer.toString('utf8')
+    }
+  }
+  return buffer.toString('utf8').replace(/^\uFEFF/, '')
+}
+
 /** 一个文本内容块。 */
 function text(value) {
   return [{ type: 'text', text: value }]
@@ -210,12 +233,13 @@ function scanTool(config = {}) {
       if (!info.isFile()) return { ok: false, error: `不是普通文件：${filePath}` }
       if (info.size > 1_500_000) return { ok: false, error: `文件太大（${info.size} 字节），上限 1.5MB` }
 
-      let raw
+      let buffer
       try {
-        raw = await readFile(filePath, 'utf8')
+        buffer = await readFile(filePath)
       } catch (error) {
         return { ok: false, error: `读取失败：${error instanceof Error ? error.message : String(error)}` }
       }
+      const raw = decodeText(buffer)
       if (raw.includes('\u0000')) return { ok: false, error: `看起来是二进制文件，跳过：${filePath}` }
 
       const report = analyze(raw, { mode, limit, customRules: config.customRules })

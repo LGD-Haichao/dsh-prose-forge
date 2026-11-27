@@ -80,8 +80,8 @@ const RULES = [
     group: '破折号',
     severity: 1,
     cjkContext: true,
-    re: /(?<!—)—(?!—)/g,
-    advice: '破折号要成对：「——」。单个 — 是连接号或范围号。',
+    re: /(?<![—\d])—(?![—\d])/g,
+    advice: '破折号要成对：「——」。单个 — 是连接号或范围号；数字之间的年份区间不算错。',
   },
   {
     kind: 'ascii-quote-cn',

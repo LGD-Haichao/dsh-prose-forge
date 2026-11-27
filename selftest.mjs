@@ -124,6 +124,12 @@ const checks = [
     '排版：中文句子里的英文词不算错',
     (analyze('我们用了 Vim。').typography.counts['en-punct-cjk'] ?? 0) === 0,
   ],
+  [
+    '排版：年份区间不算破折号错误',
+    (analyze('2020—2021 年的数据。').typography.counts['dash-single'] ?? 0) === 0,
+  ],
+  ['行内代码里的套话不计入命中', analyze('不要写 `值得注意的是` 这种话。').hitCount === 0],
+  ['行内代码里的标点不算排版错', analyze('调用 `foo(a,b)` 就行。').typography.total === 0],
   ['排版：行尾空格被抓住', (analyze('这行有空格   \n下一行。').typography.counts['trailing-space'] ?? 0) > 0],
   [
     '排版：代码块里的半角标点不算',

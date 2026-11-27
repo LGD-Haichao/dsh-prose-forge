@@ -8,6 +8,10 @@
  * 这类错误在真宿主里是静默的：工具不出现、插件不报错。
  */
 
+import { mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { apply, inject, name, proseTools, provider } from './index.js'
 import { auditStructure } from './analyze.js'
 import { STYLE_PROMPT } from './prompt.js'
@@ -118,6 +122,25 @@ const noInput = await checkTool.execute({})
 check('text 和 path 都没给时拒绝', noInput.ok === false, noInput.error ?? '')
 const bothInputs = await checkTool.execute({ text: '随便。', path: 'README.md' })
 check('两者都给时以 path 为准', bothInputs.ok === true && typeof bothInputs.path === 'string', '')
+
+// ---- 编码：BOM 与 UTF-16
+const scratch = await mkdtemp(join(tmpdir(), 'prose-forge-'))
+
+const utf16Path = join(scratch, 'utf16.md')
+await writeFile(utf16Path, Buffer.from('\uFEFF# 标题\n\n值得注意的是，正文。', 'utf16le'))
+const utf16 = await checkTool.execute({ path: utf16Path })
+check('UTF-16LE 文件能读', utf16.ok === true, utf16.error ?? '')
+check('UTF-16LE 内容解析正确', (utf16.groups['元话语'] ?? 0) === 1, JSON.stringify(utf16.groups))
+
+const bomPath = join(scratch, 'bom.md')
+await writeFile(bomPath, '\uFEFF# 标题\n\n正文。', 'utf8')
+const bom = await checkTool.execute({ path: bomPath })
+check('UTF-8 BOM 不影响标题识别', bom.mode === 'doc', bom.mode)
+
+const binaryPath = join(scratch, 'binary.bin')
+await writeFile(binaryPath, Buffer.from([0x00, 0x01, 0x02, 0x03]))
+const binary = await checkTool.execute({ path: binaryPath })
+check('二进制文件被拒绝', binary.ok === false, binary.error ?? '')
 
 // ---- 结构审计（纯函数）
 const auditText = ['# 一级', '', '## 空节', '#### 跳级', '正文。', '', '| a | b |', '| - | - |', '| 1 | 2 |'].join('\n')
