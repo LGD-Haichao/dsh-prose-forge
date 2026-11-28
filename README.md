@@ -276,7 +276,7 @@ node audit.mjs       # 规则覆盖：每条检查都能触发、都能单独跳
 index.js          三面挂载入口：契约段 + 两个工具 + skill provider
 prompt.js         常驻契约（按字付费，改这里等于改每次回复）
 rules.js          六份规则全文，硬编码不读 md
-analyze.js        扫描器：16 组正则、结构指标、结构审计、代码掩码、自定义规则
+analyze.js        扫描器：17 组正则、结构指标、结构审计、代码掩码、自定义规则
 typography.js     中文排版体检：20 项检查 + 机械修正建议
 selftest.mjs      扫描器自测
 harness.mjs       假宿主自测
