@@ -58,6 +58,18 @@ description: 产出交付型文件时用：README、说明文档、方案、变�
 3. **没做什么** — 哪些没写、为什么没写。
 4. **假设** — 用了什么前提，读者改哪里会影响结论。
 
+
+## docx 的引号字体
+
+交付 .docx 前多跑一步：中文引号落在西文字体上，宋体正文里会冒出 Times New Roman 的弯引号，肉眼别扭但扫不出来。
+
+```
+python scripts/check_quotes_font.py 文件.docx          # 只检查
+python scripts/check_quotes_font.py 文件.docx --fix    # 顺便修好
+```
+
+判据是每个 run 的 `w:ascii` 与 `w:eastAsia` 是否一致：不一致就有挑错字体的空间，引号这类边界字符最容易中招。纯文本扫描器看不到字体，这一步只能查文件。
+
 ## 自检
 
 交付前调 `prose_check`，`mode=doc`。它会额外检查标题八股和空转表述（“本节将”“本文将从”）。
